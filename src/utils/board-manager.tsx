@@ -1,0 +1,160 @@
+import { Rect } from "@domain/models/common/rect";
+import { CardModel } from "@domain/models/kanban-board-models/card-model";
+import { ColumnModel } from "@domain/models/kanban-board-models/column-model";
+import { BoardState } from "./reducers";
+
+export class BoardManager {
+    static SCROLL_TRESHOLD = 100;
+
+    static updateItemsVisibility(boardState: BoardState, column: ColumnModel, visibleItems: CardModel[]) {
+        const allItemsForCard = boardState.columnCardsMap.get(column.id);
+        if (!allItemsForCard || !visibleItems) {
+            return;
+        }
+
+        BoardManager.updateColumnsLayoutAfterVisibilityChanged(boardState, column);
+
+        allItemsForCard.forEach(item => {
+            let isVisible = visibleItems.find(x => x.id == item.id) ? true : false;
+            visibleItems && item.setIsRenderedAndVisible(isVisible);
+        });
+    }
+
+    static updateColumnsLayoutAfterVisibilityChanged(boardState: BoardState, column: ColumnModel | undefined = undefined) {
+        let columns = Array.from(boardState.columnsMap.values());
+
+        if (column) {
+            columns = columns.filter(x => x.id == column.id);
+        }
+
+        columns.forEach(column => {
+            column.measure();
+
+            var cards = boardState.columnCardsMap.get(column.id);
+            if (!cards) {
+                return;
+            }
+
+            cards.forEach((card, index) => {
+                if (index > 0) {
+                    card.measure(cards![index - 1]);
+                } else {
+                    card.measure(undefined);
+                }
+            });
+        });
+    };
+
+    static getScrollingDirection(column: ColumnModel, scrollY: number | undefined): { offset: number, scrolling: boolean } | undefined {
+        const layout = column.dimensions;
+        if (!layout) {
+            return undefined;
+        }
+
+        if (!scrollY)
+            scrollY = 0;
+
+        const upperEnd = layout.y;
+        const upper = scrollY > upperEnd - this.SCROLL_TRESHOLD && scrollY < upperEnd + this.SCROLL_TRESHOLD;
+
+        const lowerEnd = layout.y + layout.height;
+        const lower = scrollY > lowerEnd - this.SCROLL_TRESHOLD && scrollY < lowerEnd + this.SCROLL_TRESHOLD;
+
+        const offset = lower ? 1 : (upper ? -1 : 0);
+
+        return {
+            offset,
+            scrolling: (lower || upper)
+        }
+    }
+
+    static findCardInColumn(column: ColumnModel, boardState: BoardState, y: number): CardModel | undefined {
+        const visibleItems = this.getVisibleCards(column, boardState);
+        if (visibleItems.length == 0) {
+            return undefined;
+        }
+
+        let dimensions = visibleItems[0].dimensions!; //just get height of first dimension as 'template'
+        dimensions = { ...dimensions, y: y };
+
+        return this.getCardAtPosition(visibleItems, y, dimensions);
+    }
+
+    static getCardAtPosition(items: CardModel[], y: number, dimensions: Rect | undefined): CardModel | undefined {
+        if (items.length == 0) {
+            return undefined;
+        }
+
+        let item = items.find(i => this.isItemWithinY(y, dimensions, i));
+
+        //if Y higher than first item, then select 1 item
+        const firstItem = items[0];
+        if (!item && firstItem && firstItem.dimensions && y <= firstItem.dimensions.y) {
+            item = firstItem;
+        }
+
+        //if Y lower than last item, then select last item
+        const lastItem = items[items.length - 1];
+        if (!item && lastItem && lastItem.dimensions && y >= lastItem.dimensions.y) {
+            item = lastItem;
+        }
+
+        return item;
+    }
+
+    static isItemWithinY(y: number, dimensions: Rect | undefined, item: CardModel): boolean {
+        if (!item.dimensions || !dimensions) {
+            return false;
+        }
+
+        const itemDimensions = item.dimensions;
+        const heightDiff = Math.abs(dimensions.height - itemDimensions.height);
+
+        let isUp;
+        let isDown;
+
+        if (heightDiff > itemDimensions.height) {
+            isUp = y > itemDimensions.y;
+            isDown = y < itemDimensions.y + itemDimensions.height;
+        } else if (y < dimensions.y) {
+            isUp = y > itemDimensions.y;
+            isDown = y < itemDimensions.y + itemDimensions.height - heightDiff;
+        } else {
+            isUp = y > itemDimensions.y + heightDiff;
+            isDown = y < itemDimensions.y + itemDimensions.height;
+        }
+
+        return isUp && isDown;
+    }
+
+    static getVisibleCards(column: ColumnModel, boardState: BoardState): CardModel[] {
+        var cards = boardState.columnCardsMap.get(column.id);
+        if (!cards) {
+            return [];
+        }
+
+        const visibleCards = cards.filter(x => x.isRenderedAndVisible);
+        return visibleCards;
+    }
+
+    static findColumn(boardState: BoardState, x: number): ColumnModel | undefined {
+        let visibleColumns = this.getVisibleColumns(boardState);
+        let column = visibleColumns.filter(col => col.dimensions && x >= col.dimensions.x && x <= col.dimensions.x + col.dimensions.width);
+
+        if (column.length > 0) {
+            return column[0];
+        }
+
+        return undefined;
+    }
+
+    static getVisibleColumns(boardState: BoardState): ColumnModel[] {
+        if (!boardState.columnsMap) {
+            return [];
+        }
+
+        let columns = [...boardState.columnsMap.values()];
+        const visibleColumns = columns.filter(x => x.isRenderedAndVisible);
+        return visibleColumns;
+    }
+}
