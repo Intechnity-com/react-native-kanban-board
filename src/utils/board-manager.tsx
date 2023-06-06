@@ -1,160 +1,149 @@
-import { Rect } from "@domain/models/common/rect";
-import { CardModel } from "@domain/models/kanban-board-models/card-model";
-import { ColumnModel } from "@domain/models/kanban-board-models/column-model";
-import { BoardState } from "./reducers";
+import { ColumnModel } from '../models/column-model';
+import { BoardState } from '../models/board-state';
+import { CardModel } from '../models/card-model';
+import { Rect } from '../models/rect';
 
 export class BoardManager {
-    static SCROLL_TRESHOLD = 100;
+  static SCROLL_TRESHOLD = 100;
 
-    static updateItemsVisibility(boardState: BoardState, column: ColumnModel, visibleItems: CardModel[]) {
-        const allItemsForCard = boardState.columnCardsMap.get(column.id);
-        if (!allItemsForCard || !visibleItems) {
-            return;
-        }
-
-        BoardManager.updateColumnsLayoutAfterVisibilityChanged(boardState, column);
-
-        allItemsForCard.forEach(item => {
-            let isVisible = visibleItems.find(x => x.id == item.id) ? true : false;
-            visibleItems && item.setIsRenderedAndVisible(isVisible);
-        });
+  // Function to update item visibility and column layout
+  static updateItemsVisibility(boardState: BoardState, column: ColumnModel, visibleItems: CardModel[]) {
+    const allItemsForCard = boardState.columnCardsMap.get(column.id);
+    if (!allItemsForCard) {
+      return;
     }
 
-    static updateColumnsLayoutAfterVisibilityChanged(boardState: BoardState, column: ColumnModel | undefined = undefined) {
-        let columns = Array.from(boardState.columnsMap.values());
+    this.updateColumnsLayoutAfterVisibilityChanged(boardState, column);
 
-        if (column) {
-            columns = columns.filter(x => x.id == column.id);
-        }
+    allItemsForCard.forEach(item => {
+      const isVisible = visibleItems?.some(x => x.id === item.id) ?? false;
+      item.setIsRenderedAndVisible(isVisible);
+    });
+  }
 
-        columns.forEach(column => {
-            column.measure();
+  // Function to update column layout after visibility change
+  static updateColumnsLayoutAfterVisibilityChanged(boardState: BoardState, column: ColumnModel | undefined = undefined) {
+    let columns = column ? [column] : Array.from(boardState.columnsMap.values());
 
-            var cards = boardState.columnCardsMap.get(column.id);
-            if (!cards) {
-                return;
-            }
+    columns.forEach(column => {
+      column.measure();
 
-            cards.forEach((card, index) => {
-                if (index > 0) {
-                    card.measure(cards![index - 1]);
-                } else {
-                    card.measure(undefined);
-                }
-            });
-        });
-    };
+      const cards = boardState.columnCardsMap.get(column.id);
+      if (!cards) {
+        return;
+      }
 
-    static getScrollingDirection(column: ColumnModel, scrollY: number | undefined): { offset: number, scrolling: boolean } | undefined {
-        const layout = column.dimensions;
-        if (!layout) {
-            return undefined;
-        }
+      cards.forEach((card, index) => {
+        const previousCard = index > 0 ? cards[index - 1] : undefined;
+        card.measure(previousCard);
+      });
+    });
+  };
 
-        if (!scrollY)
-            scrollY = 0;
-
-        const upperEnd = layout.y;
-        const upper = scrollY > upperEnd - this.SCROLL_TRESHOLD && scrollY < upperEnd + this.SCROLL_TRESHOLD;
-
-        const lowerEnd = layout.y + layout.height;
-        const lower = scrollY > lowerEnd - this.SCROLL_TRESHOLD && scrollY < lowerEnd + this.SCROLL_TRESHOLD;
-
-        const offset = lower ? 1 : (upper ? -1 : 0);
-
-        return {
-            offset,
-            scrolling: (lower || upper)
-        }
+  static getScrollingDirection(column: ColumnModel, scrollY: number | undefined): { offset: number, scrolling: boolean } | undefined {
+    const layout = column.dimensions;
+    if (!layout) {
+      return undefined;
     }
 
-    static findCardInColumn(column: ColumnModel, boardState: BoardState, y: number): CardModel | undefined {
-        const visibleItems = this.getVisibleCards(column, boardState);
-        if (visibleItems.length == 0) {
-            return undefined;
-        }
+    if (!scrollY)
+      scrollY = 0;
 
-        let dimensions = visibleItems[0].dimensions!; //just get height of first dimension as 'template'
-        dimensions = { ...dimensions, y: y };
+    const upperEnd = layout.y;
+    const upper = scrollY > upperEnd - this.SCROLL_TRESHOLD && scrollY < upperEnd + this.SCROLL_TRESHOLD;
 
-        return this.getCardAtPosition(visibleItems, y, dimensions);
+    const lowerEnd = layout.y + layout.height;
+    const lower = scrollY > lowerEnd - this.SCROLL_TRESHOLD && scrollY < lowerEnd + this.SCROLL_TRESHOLD;
+
+    const offset = lower ? 1 : (upper ? -1 : 0);
+
+    return {
+      offset,
+      scrolling: (lower || upper)
+    }
+  }
+
+  static findCardInColumn(column: ColumnModel, boardState: BoardState, y: number): CardModel | undefined {
+    const visibleItems = this.getVisibleCards(column, boardState);
+    if (!visibleItems || visibleItems.length == 0) {
+      return undefined;
     }
 
-    static getCardAtPosition(items: CardModel[], y: number, dimensions: Rect | undefined): CardModel | undefined {
-        if (items.length == 0) {
-            return undefined;
-        }
+    let dimensions = visibleItems[0]!.dimensions!; //just get height of first dimension as 'template'
+    dimensions = { ...dimensions, y: y };
 
-        let item = items.find(i => this.isItemWithinY(y, dimensions, i));
+    return this.getCardAtPosition(visibleItems, y, dimensions);
+  }
 
-        //if Y higher than first item, then select 1 item
-        const firstItem = items[0];
-        if (!item && firstItem && firstItem.dimensions && y <= firstItem.dimensions.y) {
-            item = firstItem;
-        }
-
-        //if Y lower than last item, then select last item
-        const lastItem = items[items.length - 1];
-        if (!item && lastItem && lastItem.dimensions && y >= lastItem.dimensions.y) {
-            item = lastItem;
-        }
-
-        return item;
+  static getCardAtPosition(items: CardModel[], y: number, dimensions: Rect | undefined): CardModel | undefined {
+    if (items.length == 0) {
+      return undefined;
     }
 
-    static isItemWithinY(y: number, dimensions: Rect | undefined, item: CardModel): boolean {
-        if (!item.dimensions || !dimensions) {
-            return false;
-        }
+    let item = items.find(i => this.isItemWithinY(y, dimensions, i));
 
-        const itemDimensions = item.dimensions;
-        const heightDiff = Math.abs(dimensions.height - itemDimensions.height);
-
-        let isUp;
-        let isDown;
-
-        if (heightDiff > itemDimensions.height) {
-            isUp = y > itemDimensions.y;
-            isDown = y < itemDimensions.y + itemDimensions.height;
-        } else if (y < dimensions.y) {
-            isUp = y > itemDimensions.y;
-            isDown = y < itemDimensions.y + itemDimensions.height - heightDiff;
-        } else {
-            isUp = y > itemDimensions.y + heightDiff;
-            isDown = y < itemDimensions.y + itemDimensions.height;
-        }
-
-        return isUp && isDown;
+    //if Y higher than first item, then select 1 item
+    const firstItem = items[0];
+    if (!item && firstItem && firstItem.dimensions && y <= firstItem.dimensions.y) {
+      item = firstItem;
     }
 
-    static getVisibleCards(column: ColumnModel, boardState: BoardState): CardModel[] {
-        var cards = boardState.columnCardsMap.get(column.id);
-        if (!cards) {
-            return [];
-        }
-
-        const visibleCards = cards.filter(x => x.isRenderedAndVisible);
-        return visibleCards;
+    //if Y lower than last item, then select last item
+    const lastItem = items[items.length - 1];
+    if (!item && lastItem && lastItem.dimensions && y >= lastItem.dimensions.y) {
+      item = lastItem;
     }
 
-    static findColumn(boardState: BoardState, x: number): ColumnModel | undefined {
-        let visibleColumns = this.getVisibleColumns(boardState);
-        let column = visibleColumns.filter(col => col.dimensions && x >= col.dimensions.x && x <= col.dimensions.x + col.dimensions.width);
+    return item;
+  }
 
-        if (column.length > 0) {
-            return column[0];
-        }
-
-        return undefined;
+  static isItemWithinY(y: number, dimensions: Rect | undefined, item: CardModel): boolean {
+    if (!item.dimensions || !dimensions) {
+      return false;
     }
 
-    static getVisibleColumns(boardState: BoardState): ColumnModel[] {
-        if (!boardState.columnsMap) {
-            return [];
-        }
+    const itemDimensions = item.dimensions;
+    const heightDiff = Math.abs(dimensions.height - itemDimensions.height);
 
-        let columns = [...boardState.columnsMap.values()];
-        const visibleColumns = columns.filter(x => x.isRenderedAndVisible);
-        return visibleColumns;
+    let isUp;
+    let isDown;
+
+    if (heightDiff > itemDimensions.height) {
+      isUp = y > itemDimensions.y;
+      isDown = y < itemDimensions.y + itemDimensions.height;
+    } else if (y < dimensions.y) {
+      isUp = y > itemDimensions.y;
+      isDown = y < itemDimensions.y + itemDimensions.height - heightDiff;
+    } else {
+      isUp = y > itemDimensions.y + heightDiff;
+      isDown = y < itemDimensions.y + itemDimensions.height;
     }
+
+    return isUp && isDown;
+  }
+
+  static getVisibleCards(column: ColumnModel, boardState: BoardState): CardModel[] {
+    var cards = boardState.columnCardsMap.get(column.id);
+    if (!cards) {
+      return [];
+    }
+
+    const visibleCards = cards.filter(x => x.isRenderedAndVisible);
+    return visibleCards;
+  }
+
+  static findColumn(boardState: BoardState, x: number): ColumnModel | undefined {
+    let visibleColumns = this.getVisibleColumns(boardState);
+    let column = visibleColumns.filter(col => col.dimensions && x >= col.dimensions.x && x <= col.dimensions.x + col.dimensions.width);
+
+    if (column.length > 0) {
+      return column[0];
+    }
+
+    return undefined;
+  }
+
+  static getVisibleColumns(boardState: BoardState): ColumnModel[] {
+    return Array.from(boardState.columnsMap.values()).filter(column => column.isRenderedAndVisible);
+  }
 }

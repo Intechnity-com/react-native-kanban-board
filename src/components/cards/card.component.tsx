@@ -13,7 +13,7 @@ import { CardModel } from '../../models/card-model';
 import BoardThemeContext, { Theme } from '../../theme';
 import { Tags } from './tags.component';
 
-interface PropTypes {
+interface CardPropTypes {
   model: CardModel,
   onPress?: () => void,
   onPressIn?: (event: GestureResponderEvent) => void,
@@ -26,7 +26,7 @@ interface PropTypes {
   cardContentText?: StyleProp<TextStyle>;
 };
 
-export class Card extends Component<PropTypes> {
+export class Card extends Component<CardPropTypes> {
   render() {
     const {
       model,

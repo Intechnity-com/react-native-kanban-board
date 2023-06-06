@@ -29,3 +29,9 @@ MIT
 ---
 
 Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
+
+
+## TODO
+- provider component for width, landscape detection?
+- theme/style for styling
+- use built-in scroll snap functionality https://stackoverflow.com/questions/39849648/horizontal-scrollview-snapping-react-native

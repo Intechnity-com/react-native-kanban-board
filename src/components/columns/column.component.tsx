@@ -1,205 +1,183 @@
-import React from "react";
-import { FlatList, NativeScrollEvent, NativeSyntheticEvent, StyleSheet, Text, View, ViewToken } from "react-native";
-import { Badge } from "react-native-elements";
-import { connect } from "react-redux";
-import { AnyAction } from "redux";
+import React from 'react';
+import { FlatList, NativeScrollEvent, NativeSyntheticEvent, StyleSheet, Text, View, ViewToken } from 'react-native';
 
-import { BoardState } from "@ui/components/kanban-board/actions/reducers";
-import { BoardDispatch } from "@ui/components/kanban-board/actions/types";
-import { CardModel } from "@domain/models/kanban-board-models/card-model";
-import { ColumnModel } from "@domain/models/kanban-board-models/column-model";
-import { GET_COLUMN_WIDTH, GET_ONE_COLUMN_WIDTH } from "@ui/components/kanban-board/board-config";
-import { BoardManager } from "@ui/components/kanban-board/actions/board-manager";
+import EmptyColumn from './empty-column.component';
+import { ColumnModel } from '../../models/column-model';
+import { CardModel } from '../../models/card-model';
+import { GET_COLUMN_WIDTH, GET_ONE_COLUMN_WIDTH } from '../../board-config';
+import { Badge } from './badge.component';
+import { BoardManager } from '../../utils/board-manager';
+import { BoardState } from '../../models/board-state';
+import { COLUMN_MARGIN } from 'src/board-consts';
 
-import EmptyColumn from "./empty-column.component";
-import { colors, dimensions, textStyles } from "@ui/theme";
-
-const mapStateToProps = (state: BoardState) => ({
-    board: state
-});
-
-const mapDispatchToProps = (dispatch: BoardDispatch<AnyAction>) => ({
-});
-
-type Props = ReturnType<typeof mapStateToProps> &
-    ReturnType<typeof mapDispatchToProps> & {
-        column: ColumnModel;
-        renderCardItem: (item: CardModel) => JSX.Element;
-        isWithCountBadge: boolean;
-        movingMode: boolean;
-        oneColumn: boolean;
-        onScrollingStarted: () => void;
-        onScrollingEnded: () => void;
-    }
+type Props = {
+  boardState: BoardState,
+  column: ColumnModel;
+  renderCardItem: (item: CardModel) => JSX.Element;
+  isWithCountBadge: boolean;
+  movingMode: boolean;
+  oneColumn: boolean;
+  onScrollingStarted: () => void;
+  onScrollingEnded: () => void;
+}
 
 type State = {
 }
 
-class Column extends React.Component<Props, State> {
-    scrollingDown: boolean;
-    flatList: FlatList<CardModel> | null = null;
-    viewabilityConfig: any;
-    viewabilityConfigCallbackPairs: any;
+export class Column extends React.Component<Props, State> {
+  scrollingDown: boolean = false;
+  flatList: React.RefObject<FlatList<CardModel>> = React.createRef<FlatList<CardModel>>();
+  viewabilityConfig: any = {
+    itemVisiblePercentThreshold: 1,
+    waitForInteraction: false
+  };
 
-    constructor(props) {
-        super(props);
-        this.scrollingDown = false;
+  setRefColumn = (ref: View | null) => {
+    this.props.column.setRef(ref);
+  }
 
-        this.viewabilityConfig = {
-            itemVisiblePercentThreshold: 1,
-            waitForInteraction: false
-        };
-        this.handleChangeVisibleItems = this.handleChangeVisibleItems.bind(this);
+  measureColumn = () => {
+    this.props.column.measure();
+  }
+
+  scrollToOffset = (offset: number) => {
+    this.flatList?.current?.scrollToOffset({ animated: true, offset });
+  }
+
+  handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const {
+      column,
+      onScrollingStarted
+    } = this.props;
+
+    onScrollingStarted();
+
+    const liveOffset = event.nativeEvent.contentOffset.y;
+    this.scrollingDown = liveOffset > column.scrollOffset;
+  }
+
+  endScrolling = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const {
+      column,
+      onScrollingEnded,
+    } = this.props;
+
+    const currentOffset = event.nativeEvent.contentOffset.y;
+    const scrollingDownEnded = this.scrollingDown && currentOffset >= column.scrollOffset;
+    const scrollingUpEnded = !this.scrollingDown && currentOffset <= column.scrollOffset;
+
+    if (scrollingDownEnded || scrollingUpEnded) {
+      column.setScrollOffset(currentOffset);
+      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.props.boardState);
+      onScrollingEnded();
     }
+  }
 
-    setRefColumn(ref: View | null) {
-        this.props.column.setRef(ref);
-    }
+  onScrollEndDrag = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    this.endScrolling(event);
+  }
 
-    measureColumn() {
-        this.props.column.measure();
-    }
+  onMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { onScrollingEnded } = this.props;
 
-    scrollToOffset(offset: number) {
-        this.flatList?.scrollToOffset({ animated: true, offset });
-    }
+    this.endScrolling(event);
+    onScrollingEnded();
+  }
 
-    handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
-        const {
-            column,
-            onScrollingStarted
-        } = this.props;
+  onContentSizeChange = (_: number, contentHeight: number) => {
+    const { column } = this.props;
+    column.setContentHeight(contentHeight);
+  }
 
-        onScrollingStarted();
+  handleChangeVisibleItems = (info: { viewableItems: Array<ViewToken>; changed: Array<ViewToken> }) => {
+    const { column } = this.props;
+    let visibleItems = info.viewableItems.map(x => x.item);
+    BoardManager.updateItemsVisibility(this.props.boardState, column, visibleItems);
+  }
 
-        const liveOffset = event.nativeEvent.contentOffset.y;
-        this.scrollingDown = liveOffset > column.scrollOffset;
-    }
+  render = () => {
+    const {
+      column,
+      renderCardItem,
+      isWithCountBadge,
+      oneColumn,
+      movingMode,
+      boardState
+    } = this.props;
 
-    endScrolling(event) {
-        const {
-            column,
-            onScrollingEnded,
-        } = this.props;
+    const items = boardState.columnCardsMap.has(column.id) ? boardState.columnCardsMap.get(column.id)! : [];
+    const noOfItems = items.length;
 
-        const currentOffset = event.nativeEvent.contentOffset.y;
-        const scrollingDownEnded = this.scrollingDown && currentOffset >= column.scrollOffset;
-        const scrollingUpEnded = !this.scrollingDown && currentOffset <= column.scrollOffset;
-
-        if (scrollingDownEnded || scrollingUpEnded) {
-            column.setScrollOffset(currentOffset);
-            BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.props.board);
-            onScrollingEnded();
-        }
-    }
-
-    onScrollEndDrag(event) {
-        this.endScrolling(event);
-    }
-
-    onMomentumScrollEnd(event) {
-        const { onScrollingEnded } = this.props;
-
-        this.endScrolling(event);
-        onScrollingEnded();
-    }
-
-    onContentSizeChange(_, contentHeight) {
-        const { column } = this.props;
-        column.setContentHeight(contentHeight);
-    }
-
-    handleChangeVisibleItems(info: { viewableItems: Array<ViewToken>; changed: Array<ViewToken> }) {
-        const { column } = this.props;
-        let visibleItems = info.viewableItems.map(x => x.item);
-        BoardManager.updateItemsVisibility(this.props.board, column, visibleItems);
-    }
-
-    render() {
-        const {
-            column,
-            renderCardItem,
-            isWithCountBadge,
-            oneColumn,
-            movingMode,
-            board
-        } = this.props;
-
-        const items = board.columnCardsMap.has(column.id) ? board.columnCardsMap.get(column.id)! : [];
-        const noOfItems = items.length;
-
-        let columnContent;
-        if (noOfItems > 0) {
-            columnContent = (
-                <FlatList
-                    data={items}
-                    ref={ref => this.flatList = ref}
-                    onScroll={event => this.handleScroll(event)}
-                    scrollEventThrottle={0}
-                    onMomentumScrollEnd={event => this.onMomentumScrollEnd(event)}
-                    onScrollEndDrag={event => this.onScrollEndDrag(event)}
-                    onViewableItemsChanged={this.handleChangeVisibleItems}
-                    viewabilityConfig={this.viewabilityConfig}
-                    renderItem={item => (
-                        <View key={item.item.id}
-                            ref={ref => item.item.setRef(ref)}
-                            onLayout={event => item.item.measure(undefined)}>
-                            {renderCardItem(item.item)}
-                        </View>
-                    )}
-                    keyExtractor={item => item.id ?? ""}
-                    scrollEnabled={!movingMode}
-                    onContentSizeChange={(w: number, h: number) => this.onContentSizeChange(w, h)}
-                    showsVerticalScrollIndicator={false}
-                />
-            );
-        } else {
-            columnContent = (
-                <EmptyColumn />
-            );
-        }
-
-        return (
-            <View
-                ref={ref => this.setRefColumn(ref)}
-                onLayout={() => this.measureColumn()}
-                style={[
-                    styles.columnContainer, {
-                        width: oneColumn ? GET_ONE_COLUMN_WIDTH() : GET_COLUMN_WIDTH(),
-                        marginRight: oneColumn ? 0 : dimensions.paddingSmall
-                    }]}>
-                <View style={styles.columnHeaderContainer}>
-                    <Text style={styles.columnHeaderTitle}>{column.title}</Text>
-                    {isWithCountBadge &&
-                        <View style={styles.columnHeaderRightContainer}>
-                            <Badge value={noOfItems} badgeStyle={{backgroundColor: colors.primaryDarkColor}} />
-                        </View>
-                    }
-                </View>
-
-                {columnContent}
+    let columnContent;
+    if (noOfItems > 0) {
+      columnContent = (
+        <FlatList
+          data={items}
+          ref={this.flatList}
+          onScroll={this.handleScroll}
+          scrollEventThrottle={0}
+          onMomentumScrollEnd={this.onMomentumScrollEnd}
+          onScrollEndDrag={this.onScrollEndDrag}
+          onViewableItemsChanged={this.handleChangeVisibleItems}
+          viewabilityConfig={this.viewabilityConfig}
+          renderItem={item => (
+            <View key={item.item.id}
+              ref={ref => item.item.setRef(ref)}
+              onLayout={() => item.item.measure(undefined)}>
+              {renderCardItem(item.item)}
             </View>
-        );
+          )}
+          keyExtractor={item => item.id ?? ''}
+          scrollEnabled={!movingMode}
+          onContentSizeChange={this.onContentSizeChange}
+          showsVerticalScrollIndicator={false}
+        />
+      );
+    } else {
+      columnContent = (
+        <EmptyColumn />
+      );
     }
+
+    return (
+      <View
+        ref={this.setRefColumn}
+        onLayout={this.measureColumn}
+        style={[
+          styles.columnContainer, {
+            width: oneColumn ? GET_ONE_COLUMN_WIDTH() : GET_COLUMN_WIDTH(),
+            marginRight: oneColumn ? 0 : COLUMN_MARGIN
+          }]}>
+        <View style={styles.columnHeaderContainer}>
+          <Text style={styles.columnHeaderTitle}>{column.title}</Text>
+          {isWithCountBadge &&
+            <View style={styles.columnHeaderRightContainer}>
+              <Badge value={noOfItems} />
+            </View>
+          }
+        </View>
+
+        {columnContent}
+      </View>
+    );
+  }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true })(Column)
-
 const styles = StyleSheet.create({
-    columnContainer: {
-        backgroundColor: colors.white,
-        borderRadius: dimensions.borderRadiusSmall,
-        padding: dimensions.paddingSmall
-    },
-    columnHeaderContainer: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: dimensions.marginBig
-    },
-    columnHeaderTitle: {
-        ...textStyles.boldText,
-        fontSize: dimensions.fontVeryBig
-    },
-    columnHeaderRightContainer: {
-    },
+  columnContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 8
+  },
+  columnHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24
+  },
+  columnHeaderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
+  columnHeaderRightContainer: {
+  },
 });
