@@ -7,25 +7,18 @@ import {
   LongPressGestureHandlerEventPayload,
   State as rnState
 } from 'react-native-gesture-handler';
-import ReactTimeout from 'react-timeout';
+import ReactTimeout, { ReactTimeoutProps } from 'react-timeout';
 
-import { CardModel } from 'src/models/card-model';
-import { ColumnModel } from 'src/models/column-model';
-import ColumnsCarouselContainer from './columns/columns-carousel-container.component';
-import { BoardState } from 'src/models/board-state';
-import { BoardManager } from 'src/utils/board-manager';
-import { logError } from 'src/utils/logger';
-import { getDeviceWidth } from 'src/utils/device-utils';
-import { MAX_DEG, MAX_RANGE } from 'src/board-consts';
-import { GET_CARD_WIDTH } from 'src/board-config';
-import { Card } from './cards/card.component';
-import { Column } from './columns/column.component';
-
-interface ReactTimeoutProps {
-  setTimeout: (callback: (...args: any[]) => void, ms: number, ...args: any[]) => any;
-  clearTimeout: (timer: any) => void;
-  requestAnimationFrame: (callback: (...args: any[]) => void) => number;
-}
+import { CardModel } from '../models/card-model';
+import { ColumnModel } from '../models/column-model';
+import WrappedColumnsCarouselContainer, { ColumnsCarouselContainer } from './columns/columns-carousel-container.component';
+import { BoardState } from '../models/board-state';
+import { BoardManager } from '../utils/board-manager';
+import { logError } from '../utils/logger';
+import { MAX_DEG, MAX_RANGE } from '../board-consts';
+import Card from './cards/card.component';
+import Column from './columns/column.component';
+import { DeviceInfoType, withDeviceInfoContext } from './device-info.provider';
 
 export type KanbanBoardContainerExternalProps = {
   columns: ColumnModel[];
@@ -37,6 +30,7 @@ export type KanbanBoardContainerExternalProps = {
 
 export type KanbanBoardContainerProps =
   ReactTimeoutProps &
+  DeviceInfoType &
   KanbanBoardContainerExternalProps;
 
 type State = {
@@ -57,7 +51,7 @@ class KanbanBoardContainer extends React.Component<KanbanBoardContainerProps, St
   isColumnScrolling: boolean;
   dragX: number = 0;
   dragY: number = 0;
-  carouselContainer: ColumnsCarouselContainer<ColumnModel> | null;
+  carouselContainer: ColumnsCarouselContainer | null;
   columnListViewsMap: Map<string, any> = new Map<string, any>(); //any is here Column
 
   constructor(props: KanbanBoardContainerProps) {
@@ -297,6 +291,9 @@ class KanbanBoardContainer extends React.Component<KanbanBoardContainerProps, St
   onGestureEvent(event: GestureEvent<LongPressGestureHandlerEventPayload>) {
     try {
       const {
+        deviceWidth
+      } = this.props;
+      const {
         draggedItem,
         movingMode,
         draggedItemWidth,
@@ -325,7 +322,7 @@ class KanbanBoardContainer extends React.Component<KanbanBoardContainerProps, St
       if (event.nativeEvent.absoluteX < snapMargin) {
         shouldSnapPrevOrScrollLeft = true;
       }
-      if (event.nativeEvent.absoluteX > getDeviceWidth() - snapMargin) {
+      if (event.nativeEvent.absoluteX > deviceWidth - snapMargin) {
         shouldSnapNextOrScrollRight = true;
       }
 
@@ -542,7 +539,14 @@ class KanbanBoardContainer extends React.Component<KanbanBoardContainerProps, St
   }
 
   renderDragCard() {
-    const { draggedItem, movingMode, pan, rotate, startingX, startingY } = this.state;
+    const { cardWidth } = this.props;
+    const {
+      draggedItem,
+      movingMode,
+      pan,
+      rotate,
+      startingX,
+      startingY } = this.state;
     const { renderCardContent } = this.props;
     if (!draggedItem || !movingMode) {
       return;
@@ -559,7 +563,7 @@ class KanbanBoardContainer extends React.Component<KanbanBoardContainerProps, St
           position: 'absolute',
           left: startingX,
           top: startingY,
-          width: GET_CARD_WIDTH() - 16,
+          width: cardWidth - 16,
           transform: [
             { translateX: pan.x },
             { translateY: pan.y },
@@ -608,6 +612,7 @@ class KanbanBoardContainer extends React.Component<KanbanBoardContainerProps, St
   }
 
   render() {
+    const { deviceWidth, cardWidth } = this.props;
     const { boardState, movingMode } = this.state;
 
     const columns = Array.from(boardState.columnsMap.values());
@@ -622,14 +627,14 @@ class KanbanBoardContainer extends React.Component<KanbanBoardContainerProps, St
           style={styles.boardContainer}
           onLayout={(evt) => this.setBoardPositionY(evt.nativeEvent.layout.y)}>
 
-          <ColumnsCarouselContainer
-            ref={(c) => { this.carouselContainer = c }}
+          <WrappedColumnsCarouselContainer
+            ref={(c: ColumnsCarouselContainer) => { this.carouselContainer = c }}
             data={columns}
             onScrollEndDrag={() => this.onScrollEnd()}
             scrollEnabled={!movingMode}
             renderItem={columnModel => this.renderColumn(columnModel, oneColumn)}
-            sliderWidth={getDeviceWidth()}
-            itemWidth={GET_CARD_WIDTH()}
+            sliderWidth={deviceWidth}
+            itemWidth={cardWidth}
             oneColumn={oneColumn}
           />
 
@@ -646,4 +651,4 @@ const styles = StyleSheet.create({
   }
 });
 
-export default ReactTimeout(KanbanBoardContainer);
+export default withDeviceInfoContext(ReactTimeout(KanbanBoardContainer));

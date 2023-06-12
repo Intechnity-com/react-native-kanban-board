@@ -7,10 +7,10 @@ import { CardModel } from '../../models/card-model';
 import { Badge } from './badge.component';
 import { BoardManager } from '../../utils/board-manager';
 import { BoardState } from '../../models/board-state';
-import { COLUMN_MARGIN } from 'src/board-consts';
+import { COLUMN_MARGIN } from '../../board-consts';
 import { DeviceInfoType, withDeviceInfoContext } from '../device-info.provider';
 
-type Props = {
+type Props = DeviceInfoType & {
   boardState: BoardState,
   column: ColumnModel;
   renderCardItem: (item: CardModel) => JSX.Element;
@@ -19,12 +19,12 @@ type Props = {
   oneColumn: boolean;
   onScrollingStarted: () => void;
   onScrollingEnded: () => void;
-} & DeviceInfoType;
+};
 
 type State = {
 }
 
-export class Column extends React.Component<Props, State> {
+class Column extends React.Component<Props, State> {
   scrollingDown: boolean = false;
   flatList: React.RefObject<FlatList<CardModel>> = React.createRef<FlatList<CardModel>>();
   viewabilityConfig: any = {
@@ -102,7 +102,9 @@ export class Column extends React.Component<Props, State> {
       isWithCountBadge,
       oneColumn,
       movingMode,
-      boardState
+      boardState,
+      oneColumnWidth,
+      columnWidth
     } = this.props;
 
     const items = boardState.columnCardsMap.has(column.id) ? boardState.columnCardsMap.get(column.id)! : [];
@@ -145,7 +147,7 @@ export class Column extends React.Component<Props, State> {
         onLayout={this.measureColumn}
         style={[
           styles.columnContainer, {
-            width: oneColumn ? GET_ONE_COLUMN_WIDTH() : GET_COLUMN_WIDTH(),
+            width: oneColumn ? oneColumnWidth : columnWidth,
             marginRight: oneColumn ? 0 : COLUMN_MARGIN
           }]}>
         <View style={styles.columnHeaderContainer}>

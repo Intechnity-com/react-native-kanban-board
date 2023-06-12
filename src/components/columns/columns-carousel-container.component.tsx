@@ -2,28 +2,29 @@ import React, { Component, RefObject } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
 import { COLUMN_MARGIN } from 'src/board-consts';
 import { Dot } from './dot.component';
-import { DeviceInfoType } from '../device-info.provider';
+import { DeviceInfoType, withDeviceInfoContext } from '../device-info.provider';
+import { ColumnModel } from '../../models/column-model';
 
 const INITIAL_ACTIVE_ITEM = 0;
 
-type Props<ItemT> = {
-  data: ItemT[];
+type Props = DeviceInfoType & {
+  data: ColumnModel[];
   itemWidth: number;
   oneColumn: boolean;
   onScrollEndDrag: () => void;
-  renderItem: (item: ItemT) => JSX.Element;
+  renderItem: (item: ColumnModel) => JSX.Element;
   sliderWidth: number;
   scrollEnabled: boolean;
-} & DeviceInfoType;
+};
 
 type State = {
   activeItemIndex: number;
 };
 
-class ColumnsCarouselContainer<ItemT> extends Component<Props<ItemT>, State> {
+export class ColumnsCarouselContainer extends Component<Props, State> {
   carouselRef: RefObject<ScrollView> = React.createRef<ScrollView>();
 
-  constructor(props: Props<ItemT>) {
+  constructor(props: Props) {
     super(props);
 
     this.state = {
@@ -35,7 +36,7 @@ class ColumnsCarouselContainer<ItemT> extends Component<Props<ItemT>, State> {
     this.scrollToItem(this.state.activeItemIndex);
   }
 
-  componentDidUpdate(prevProps: Props<ItemT>) {
+  componentDidUpdate(prevProps: Props) {
     if (prevProps.itemWidth !== this.props.itemWidth || prevProps.sliderWidth !== this.props.sliderWidth) {
       this.scrollToItem(this.state.activeItemIndex);
     }
@@ -45,7 +46,7 @@ class ColumnsCarouselContainer<ItemT> extends Component<Props<ItemT>, State> {
     return this.state.activeItemIndex;
   }
 
-  get currentItem(): ItemT | undefined {
+  get currentItem(): ColumnModel | undefined {
     return this.props.data[this.currentItemIndex];
   }
 
@@ -84,7 +85,7 @@ class ColumnsCarouselContainer<ItemT> extends Component<Props<ItemT>, State> {
     }
   };
 
-  getIndex(item: ItemT) {
+  getIndex(item: ColumnModel) {
     return this.props.data.indexOf(item);
   }
 
@@ -132,7 +133,7 @@ class ColumnsCarouselContainer<ItemT> extends Component<Props<ItemT>, State> {
   }
 }
 
-export default ColumnsCarouselContainer;
+export default withDeviceInfoContext(ColumnsCarouselContainer);
 
 const styles = StyleSheet.create({
   container: {

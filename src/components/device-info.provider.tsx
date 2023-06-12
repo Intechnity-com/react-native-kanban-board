@@ -1,7 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import { Dimensions, EmitterSubscription } from 'react-native';
 import { isTablet } from 'react-native-device-info';
-import { PADDING } from 'src/board-consts';
+import { PADDING } from '../board-consts';
 
 export type DeviceInfoType = {
   deviceWidth: number;
