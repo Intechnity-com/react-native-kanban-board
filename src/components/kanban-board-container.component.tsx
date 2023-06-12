@@ -7,6 +7,8 @@ import {
   LongPressGestureHandlerEventPayload,
   State as rnState
 } from 'react-native-gesture-handler';
+import ReactTimeout from 'react-timeout';
+
 import { CardModel } from 'src/models/card-model';
 import { ColumnModel } from 'src/models/column-model';
 import ColumnsCarouselContainer from './columns/columns-carousel-container.component';
@@ -51,7 +53,7 @@ type State = {
   draggedItemHeight: number;
 }
 
-export class KanbanBoardContainer extends React.Component<KanbanBoardContainerProps, State> {
+class KanbanBoardContainer extends React.Component<KanbanBoardContainerProps, State> {
   isColumnScrolling: boolean;
   dragX: number = 0;
   dragY: number = 0;
@@ -168,7 +170,7 @@ export class KanbanBoardContainer extends React.Component<KanbanBoardContainerPr
     });
   };
 
-  moveCardActionCreator(draggedItem: CardModel, x: number, y: number, targetColumn: ColumnModel) {
+  moveCardActionCreator(draggedItem: CardModel, _x: number, y: number, targetColumn: ColumnModel) {
     try {
 
       const columns = this.state.boardState.columnsMap;
@@ -643,3 +645,5 @@ const styles = StyleSheet.create({
     flex: 1
   }
 });
+
+export default ReactTimeout(KanbanBoardContainer);

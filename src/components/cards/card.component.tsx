@@ -10,10 +10,10 @@ import {
   TextStyle
 } from 'react-native';
 import { CardModel } from '../../models/card-model';
-import BoardThemeContext, { Theme } from '../../theme';
 import { Tags } from './tags.component';
+import { DeviceInfoType, withDeviceInfoContext } from '../device-info.provider';
 
-interface CardPropTypes {
+type CardPropTypes = {
   model: CardModel,
   onPress?: () => void,
   onPressIn?: (event: GestureResponderEvent) => void,
@@ -24,9 +24,9 @@ interface CardPropTypes {
   cardTitleText?: StyleProp<TextStyle>;
   cardSubtitleText?: StyleProp<TextStyle>;
   cardContentText?: StyleProp<TextStyle>;
-};
+} & DeviceInfoType;
 
-export class Card extends Component<CardPropTypes> {
+class Card extends Component<CardPropTypes> {
   render() {
     const {
       model,
@@ -41,37 +41,35 @@ export class Card extends Component<CardPropTypes> {
     } = this.props;
 
     return (
-      <BoardThemeContext.Consumer>
-        {(theme: Theme) => (
-          <View style={[styles.container, cardContainer, hidden && { opacity: 0 }]}>
-            <TouchableOpacity
-              onPress={onPress}
-              onPressIn={onPressIn}>
-              {renderCardContent &&
-                renderCardContent(model)}
+      <View style={[styles.container, cardContainer, hidden && { opacity: 0 }]}>
+        <TouchableOpacity
+          onPress={onPress}
+          onPressIn={onPressIn}>
+          {renderCardContent &&
+            renderCardContent(model)}
 
-              {!renderCardContent &&
-                <React.Fragment>
-                  <View style={styles.cardHeaderContainer}>
-                    <View style={styles.cardTitleContainer}>
-                      <Text style={[cardTitleText, styles.cardTitleText]}>{model.title}</Text>
-                    </View>
-                    <Text style={[cardSubtitleText, styles.cardSubtitleText]}>{model.subtitle}</Text>
-                  </View>
-                  <View style={styles.cardContentContainer}>
-                    <Text style={[cardContentText, styles.cardContentText]}>{model.description}</Text>
-                  </View>
-                  {model.tags && model.tags.length > 0 && (
-                    <Tags items={model.tags} />
-                  )}
-                </React.Fragment>}
-            </TouchableOpacity>
-          </View>
-        )}
-      </BoardThemeContext.Consumer>
+          {!renderCardContent &&
+            <React.Fragment>
+              <View style={styles.cardHeaderContainer}>
+                <View style={styles.cardTitleContainer}>
+                  <Text style={[cardTitleText, styles.cardTitleText]}>{model.title}</Text>
+                </View>
+                <Text style={[cardSubtitleText, styles.cardSubtitleText]}>{model.subtitle}</Text>
+              </View>
+              <View style={styles.cardContentContainer}>
+                <Text style={[cardContentText, styles.cardContentText]}>{model.description}</Text>
+              </View>
+              {model.tags && model.tags.length > 0 && (
+                <Tags items={model.tags} />
+              )}
+            </React.Fragment>}
+        </TouchableOpacity>
+      </View>
     )
   }
 }
+
+export default withDeviceInfoContext(Card);
 
 const styles = StyleSheet.create({
   container: {

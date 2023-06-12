@@ -4,11 +4,11 @@ import { FlatList, NativeScrollEvent, NativeSyntheticEvent, StyleSheet, Text, Vi
 import EmptyColumn from './empty-column.component';
 import { ColumnModel } from '../../models/column-model';
 import { CardModel } from '../../models/card-model';
-import { GET_COLUMN_WIDTH, GET_ONE_COLUMN_WIDTH } from '../../board-config';
 import { Badge } from './badge.component';
 import { BoardManager } from '../../utils/board-manager';
 import { BoardState } from '../../models/board-state';
 import { COLUMN_MARGIN } from 'src/board-consts';
+import { DeviceInfoType, withDeviceInfoContext } from '../device-info.provider';
 
 type Props = {
   boardState: BoardState,
@@ -19,7 +19,7 @@ type Props = {
   oneColumn: boolean;
   onScrollingStarted: () => void;
   onScrollingEnded: () => void;
-}
+} & DeviceInfoType;
 
 type State = {
 }
@@ -162,6 +162,8 @@ export class Column extends React.Component<Props, State> {
     );
   }
 }
+
+export default withDeviceInfoContext(Column);
 
 const styles = StyleSheet.create({
   columnContainer: {
