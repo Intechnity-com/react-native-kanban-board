@@ -1,6 +1,6 @@
 import React, { Component, RefObject } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
-import { COLUMN_MARGIN } from 'src/board-consts';
+import { COLUMN_MARGIN } from '../../board-consts';
 import { Dot } from './dot.component';
 import { DeviceInfoType, withDeviceInfoContext } from '../device-info.provider';
 import { ColumnModel } from '../../models/column-model';
