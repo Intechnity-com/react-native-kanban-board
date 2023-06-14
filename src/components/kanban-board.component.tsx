@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import {
   GestureEvent,
+  GestureHandlerRootView,
   HandlerStateChangeEvent,
   LongPressGestureHandler,
   LongPressGestureHandlerEventPayload,
@@ -543,7 +544,7 @@ class KanbanBoard extends React.Component<Props, State> {
     }
   }
 
-  onCardPress = (card: CardModel) => {
+  cardPressed = (card: CardModel) => {
     const { onCardPress } = this.props;
     const { movingMode } = this.state;
 
@@ -554,7 +555,10 @@ class KanbanBoard extends React.Component<Props, State> {
     if (this.carouselContainer) {
       const activeColumn = this.carouselContainer.currentItem;
 
+      console.log("carousel container: " + JSON.stringify(this.carouselContainer));
+      console.log("pressed 5, activeColumn: " + JSON.stringify(activeColumn));
       if (activeColumn?.id == card.columnId) {
+        console.log("pressed 6")
         onCardPress(card);
       }
     } else {
@@ -625,7 +629,7 @@ class KanbanBoard extends React.Component<Props, State> {
         key={item.id}
         model={item}
         hidden={item.isHidden}
-        onCardPress={this.onCardPress}
+        onCardPress={this.cardPressed}
         renderCardContent={renderCardContent}
         cardContainerStyle={cardContainerStyle}
         cardTitleTextStyle={cardTitleTextStyle}
@@ -679,30 +683,32 @@ class KanbanBoard extends React.Component<Props, State> {
     const oneColumn = columns.length === 1;
 
     return (
-      <KanbanContextProvider>
-        <LongPressGestureHandler
-          maxDist={Number.MAX_SAFE_INTEGER}
-          onGestureEvent={this.onGestureEvent}
-          onHandlerStateChange={this.onHandlerStateChange}>
-          <View
-            style={styles.boardContainer}
-            onLayout={this.setBoardPositionY}>
+      <GestureHandlerRootView>
+        <KanbanContextProvider>
+          <LongPressGestureHandler
+            maxDist={Number.MAX_SAFE_INTEGER}
+            onGestureEvent={this.onGestureEvent}
+            onHandlerStateChange={this.onHandlerStateChange}>
+            <View
+              style={styles.boardContainer}
+              onLayout={this.setBoardPositionY}>
 
-            <WrappedColumnsCarouselContainer
-              ref={(c: ColumnsCarouselContainer) => { this.carouselContainer = c }}
-              data={columns}
-              onScrollEndDrag={this.onScrollEnd}
-              scrollEnabled={!movingMode}
-              renderItem={this.renderColumn}
-              sliderWidth={deviceWidth}
-              itemWidth={cardWidth}
-              oneColumn={oneColumn}
-            />
+              <WrappedColumnsCarouselContainer
+                ref={(c: ColumnsCarouselContainer) => { this.carouselContainer = c }}
+                data={columns}
+                onScrollEndDrag={this.onScrollEnd}
+                scrollEnabled={!movingMode}
+                renderItem={this.renderColumn}
+                sliderWidth={deviceWidth}
+                itemWidth={cardWidth}
+                oneColumn={oneColumn}
+              />
 
-            {this.renderDragCard()}
-          </View >
-        </LongPressGestureHandler>
-      </KanbanContextProvider>
+              {this.renderDragCard()}
+            </View >
+          </LongPressGestureHandler>
+        </KanbanContextProvider>
+      </GestureHandlerRootView>
     )
   }
 }

@@ -1,6 +1,5 @@
 import React, { Component, ReactNode } from 'react';
-import { Dimensions, EmitterSubscription } from 'react-native';
-import { isTablet } from 'react-native-device-info';
+import { Dimensions, EmitterSubscription, Platform } from 'react-native';
 
 import { PADDING } from '../board-consts';
 
@@ -11,6 +10,20 @@ export type KanbanContext = {
   oneColumnWidth: number;
   cardWidth: number;
   noOfColumns: number;
+};
+
+function isTablet(): boolean {
+  const { width, height } = Dimensions.get('window');
+  const aspectRatio = height / width;
+
+  if (Platform.OS === 'ios') {
+    const tabletAspectRatio = 1.6;
+    return aspectRatio < tabletAspectRatio;
+  } else {
+    const smallestDimension = Math.min(width, height);
+    const tabletSmallestDimension = 600;
+    return smallestDimension >= tabletSmallestDimension;
+  }
 };
 
 function getKanbanContext(): KanbanContext {

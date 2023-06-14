@@ -48,7 +48,9 @@ export class ColumnsCarouselContainer extends Component<Props, State> {
   }
 
   get currentItem(): ColumnModel | undefined {
-    return this.props.data[this.currentItemIndex];
+    console.log("this.state.activeItemIndex: " + this.state.activeItemIndex);
+
+    return this.props.data[this.state.activeItemIndex];
   }
 
   onScrollEndDrag = () => {
@@ -61,7 +63,6 @@ export class ColumnsCarouselContainer extends Component<Props, State> {
     const { itemWidth } = this.props;
     const activeItemIndex = Math.round(offsetX / itemWidth);
     this.setState({ activeItemIndex });
-    this.scrollToItem(activeItemIndex);
     this.onScrollEndDrag();
   };
 

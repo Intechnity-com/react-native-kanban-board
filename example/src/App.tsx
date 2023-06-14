@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text, Alert, StyleSheet, StatusBar } from 'react-native';
 import { KanbanBoard, ColumnModel, CardModel } from '@intechnity/react-native-kanban-board';
 
 type AppState = {
@@ -8,7 +8,9 @@ type AppState = {
 }
 
 class App extends React.Component<{}, AppState> {
-  componentDidMount(): void {
+  constructor(props: {}) {
+    super(props);
+
     const columns = [
       new ColumnModel("new", "New", 1),
       new ColumnModel("inProgress", "In Progress", 2),
@@ -61,10 +63,10 @@ class App extends React.Component<{}, AppState> {
       )
     ];
 
-    this.setState({
+    this.state = {
       columns: columns,
       cards: cards
-    });
+    }
   }
 
   onCardDragEnd = (srcColumn: ColumnModel, destColumn: ColumnModel, item: CardModel, cardIdx: number) => {
@@ -79,7 +81,7 @@ class App extends React.Component<{}, AppState> {
     const { columns, cards } = this.state;
 
     return (
-      <View>
+      <View style={styles.container}>
         <Text>Example kanban board</Text>
 
         <KanbanBoard
@@ -94,3 +96,12 @@ class App extends React.Component<{}, AppState> {
 }
 
 export default App;
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: StatusBar.currentHeight,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
+});

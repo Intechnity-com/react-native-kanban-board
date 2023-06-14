@@ -158,7 +158,6 @@
     ]
   },
   "dependencies": {
-    "react-native-device-info": "^10.6.0",
     "react-native-gesture-handler": "^2.10.2",
     "react-timeout": "^2.0.1"
   }
