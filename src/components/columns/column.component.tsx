@@ -1,5 +1,16 @@
 import React from 'react';
-import { FlatList, NativeScrollEvent, NativeSyntheticEvent, StyleSheet, Text, View, ViewToken } from 'react-native';
+import {
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  TextStyle,
+  ViewStyle,
+  ViewToken
+} from 'react-native';
 
 import EmptyColumn from './empty-column.component';
 import { ColumnModel } from '../../models/column-model';
@@ -8,18 +19,25 @@ import { Badge } from './badge.component';
 import { BoardManager } from '../../utils/board-manager';
 import { BoardState } from '../../models/board-state';
 import { COLUMN_MARGIN } from '../../board-consts';
-import { DeviceInfoType, withDeviceInfoContext } from '../device-info.provider';
+import { KanbanContext, withKanbanContext } from '../kanban-context.provider';
 
-type Props = DeviceInfoType & {
-  boardState: BoardState,
-  column: ColumnModel;
-  renderCardItem: (item: CardModel) => JSX.Element;
-  isWithCountBadge: boolean;
-  movingMode: boolean;
-  oneColumn: boolean;
-  onScrollingStarted: () => void;
-  onScrollingEnded: () => void;
-};
+export type ColumnExternalProps = {
+  renderEmptyColumn?: (item: ColumnModel) => JSX.Element;
+  columnHeaderContainerStyle?: StyleProp<ViewStyle>;
+  columnHeaderTitleStyle?: StyleProp<TextStyle>;
+}
+
+type Props = KanbanContext &
+  ColumnExternalProps & {
+    boardState: BoardState;
+    column: ColumnModel;
+    renderCardItem: (item: CardModel) => JSX.Element;
+    isWithCountBadge: boolean;
+    movingMode: boolean;
+    oneColumn: boolean;
+    onScrollingStarted: () => void;
+    onScrollingEnded: () => void;
+  };
 
 type State = {
 }
@@ -104,7 +122,11 @@ class Column extends React.Component<Props, State> {
       movingMode,
       boardState,
       oneColumnWidth,
-      columnWidth
+      columnWidth,
+
+      renderEmptyColumn,
+      columnHeaderContainerStyle,
+      columnHeaderTitleStyle
     } = this.props;
 
     const items = boardState.columnCardsMap.has(column.id) ? boardState.columnCardsMap.get(column.id)! : [];
@@ -136,9 +158,10 @@ class Column extends React.Component<Props, State> {
         />
       );
     } else {
-      columnContent = (
-        <EmptyColumn />
-      );
+      columnContent = renderEmptyColumn ?
+        renderEmptyColumn(column) : (
+          <EmptyColumn />
+        );
     }
 
     return (
@@ -150,8 +173,8 @@ class Column extends React.Component<Props, State> {
             width: oneColumn ? oneColumnWidth : columnWidth,
             marginRight: oneColumn ? 0 : COLUMN_MARGIN
           }]}>
-        <View style={styles.columnHeaderContainer}>
-          <Text style={styles.columnHeaderTitle}>{column.title}</Text>
+        <View style={[styles.columnHeaderContainer, columnHeaderContainerStyle]}>
+          <Text style={[styles.columnHeaderTitle, columnHeaderTitleStyle]}>{column.title}</Text>
           {isWithCountBadge &&
             <View style={styles.columnHeaderRightContainer}>
               <Badge value={noOfItems} />
@@ -165,7 +188,7 @@ class Column extends React.Component<Props, State> {
   }
 }
 
-export default withDeviceInfoContext(Column);
+export default withKanbanContext(Column);
 
 const styles = StyleSheet.create({
   columnContainer: {

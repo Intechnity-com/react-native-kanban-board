@@ -1,9 +1,9 @@
 import React from 'react';
 import { StyleProp, View, ViewStyle } from 'react-native';
 
-interface Props {
-  color: string,
-  style?: StyleProp<ViewStyle>
+type Props = {
+  color: string;
+  style?: StyleProp<ViewStyle>;
 }
 
 export class Dot extends React.Component<Props> {

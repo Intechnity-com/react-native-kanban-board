@@ -1,15 +1,16 @@
 import React, { Component } from 'react';
 import { FlatList, StyleSheet, Text, View, StyleProp, ViewStyle, TextStyle } from 'react-native';
+
 import { Tag } from '../../models/tag';
 
-export interface TagsPropTypes {
-  items: Tag[],
-  swiperContainerStyle?: StyleProp<ViewStyle>,
-  listItemStyle?: StyleProp<ViewStyle>,
-  tagTextStyle?: StyleProp<TextStyle>,
+type Props = {
+  items: Tag[];
+  swiperContainerStyle?: StyleProp<ViewStyle>;
+  listItemStyle?: StyleProp<ViewStyle>;
+  tagTextStyle?: StyleProp<TextStyle>;
 }
 
-export class Tags extends Component<TagsPropTypes> {
+export class Tags extends Component<Props> {
   render() {
     const { swiperContainerStyle, listItemStyle, tagTextStyle } = this.props;
 

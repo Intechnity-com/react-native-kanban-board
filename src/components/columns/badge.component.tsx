@@ -1,14 +1,14 @@
 import React, { Component } from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle, TextStyle } from 'react-native';
 
-interface BadgeProps {
+type Props = {
   value: string | number;
   backgroundColor?: string;
   badgeStyle?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
 }
 
-export class Badge extends Component<BadgeProps> {
+export class Badge extends Component<Props> {
   render() {
     const { value, backgroundColor, badgeStyle, textStyle } = this.props;
 

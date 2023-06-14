@@ -1,9 +1,10 @@
 import React, { Component, ReactNode } from 'react';
 import { Dimensions, EmitterSubscription } from 'react-native';
 import { isTablet } from 'react-native-device-info';
+
 import { PADDING } from '../board-consts';
 
-export type DeviceInfoType = {
+export type KanbanContext = {
   deviceWidth: number;
   isLandscape: boolean;
   columnWidth: number;
@@ -12,7 +13,7 @@ export type DeviceInfoType = {
   noOfColumns: number;
 };
 
-function getDeviceInfoContext(): DeviceInfoType {
+function getKanbanContext(): KanbanContext {
   const screenSize = Dimensions.get('window');
   const deviceWidth = screenSize.width;
   const isLandscape = screenSize.width > screenSize.height;
@@ -32,7 +33,7 @@ function getDeviceInfoContext(): DeviceInfoType {
   const oneColumnWidth = deviceWidth - PADDING;
   const cardWidth = 0.85 * (deviceWidth / noOfColumns);
 
-  const deviceInfoContext: DeviceInfoType = {
+  const deviceInfoContext: KanbanContext = {
     deviceWidth: deviceWidth,
     isLandscape: isLandscape,
     columnWidth: columnWidth,
@@ -44,15 +45,15 @@ function getDeviceInfoContext(): DeviceInfoType {
   return deviceInfoContext;
 }
 
-const initialDeviceInfoContext = getDeviceInfoContext();
-const DeviceInfoContext = React.createContext<DeviceInfoType>(initialDeviceInfoContext);
+const initialDeviceInfoContext = getKanbanContext();
+const DeviceInfoContext = React.createContext<KanbanContext>(initialDeviceInfoContext);
 
-type DeviceInfoProps = {
+type Props = {
   children: ReactNode;
 };
 
-export class DeviceInfoProvider extends Component<DeviceInfoProps, DeviceInfoType> {
-  state: DeviceInfoType = initialDeviceInfoContext;
+export class KanbanContextProvider extends Component<Props, KanbanContext> {
+  state: KanbanContext = initialDeviceInfoContext;
   resizeSubscription: EmitterSubscription | null = null;
 
   componentDidMount() {
@@ -64,7 +65,7 @@ export class DeviceInfoProvider extends Component<DeviceInfoProps, DeviceInfoTyp
   }
 
   handleOrientationChange = () => {
-    const deviceInfoContext = getDeviceInfoContext();
+    const deviceInfoContext = getKanbanContext();
     this.setState(deviceInfoContext);
   };
 
@@ -79,8 +80,8 @@ export class DeviceInfoProvider extends Component<DeviceInfoProps, DeviceInfoTyp
   }
 }
 
-export const withDeviceInfoContext = <P extends object>(
-  WrappedComponent: React.ComponentType<P & DeviceInfoType>
+export const withKanbanContext = <P extends object>(
+  WrappedComponent: React.ComponentType<P & KanbanContext>
 ) => {
   return class extends Component<P> {
     render() {
@@ -92,5 +93,3 @@ export const withDeviceInfoContext = <P extends object>(
     }
   };
 };
-
-export default DeviceInfoContext;

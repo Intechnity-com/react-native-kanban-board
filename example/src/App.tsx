@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { StyleSheet, View, Text, Alert } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import { KanbanBoard, ColumnModel, CardModel } from '@intechnity/react-native-kanban-board';
 
 type AppState = {
@@ -94,7 +94,3 @@ class App extends React.Component<{}, AppState> {
 }
 
 export default App;
-
-const styles = StyleSheet.create({
-
-});

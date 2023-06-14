@@ -32,6 +32,11 @@ Made with [create-react-native-library](https://github.com/callstack/react-nativ
 
 
 ## TODO
-- export indiex.ts + theme/style for styling
+- rename cardModel, columnModel
 - create example 
 - documentation readme.md
+
+
+## TODO
+- Render custom column
+- Input margin/paddings

@@ -1,10 +1,10 @@
 import React, { Component } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-type PropTypes = {
+type Props = {
 };
 
-export default class EmptyColumn extends Component<PropTypes> {
+export default class EmptyColumn extends Component<Props> {
   render() {
     return (
       <View style={styles.container}>

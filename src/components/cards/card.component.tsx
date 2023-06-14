@@ -1,7 +1,6 @@
 import React, { Component } from 'react'
 import {
   TouchableOpacity,
-  GestureResponderEvent,
   StyleProp,
   StyleSheet,
   Text,
@@ -9,42 +8,55 @@ import {
   ViewStyle,
   TextStyle
 } from 'react-native';
+
 import { CardModel } from '../../models/card-model';
 import { Tags } from './tags.component';
-import { DeviceInfoType, withDeviceInfoContext } from '../device-info.provider';
+import { KanbanContext, withKanbanContext } from '../kanban-context.provider';
 
-type CardPropTypes = {
-  model: CardModel,
-  onPress?: () => void,
-  onPressIn?: (event: GestureResponderEvent) => void,
-  hidden: boolean,
-  style?: StyleProp<ViewStyle>,
+export type CardExternalProps = {
+  onCardPress?: (mode: CardModel) => void;
   renderCardContent?(model: CardModel): JSX.Element | null;
-  cardContainer?: StyleProp<ViewStyle>;
-  cardTitleText?: StyleProp<TextStyle>;
-  cardSubtitleText?: StyleProp<TextStyle>;
-  cardContentText?: StyleProp<TextStyle>;
-} & DeviceInfoType;
+  cardContainerStyle?: StyleProp<ViewStyle>;
+  cardTitleTextStyle?: StyleProp<TextStyle>;
+  cardSubtitleTextStyle?: StyleProp<TextStyle>;
+  cardContentTextStyle?: StyleProp<TextStyle>;
+}
 
-class Card extends Component<CardPropTypes> {
+type Props = CardExternalProps &
+  KanbanContext & {
+    model: CardModel;
+    hidden: boolean;
+  };
+
+class Card extends Component<Props> {
+  onPress = () => {
+    const {
+      onCardPress,
+      model
+    } = this.props;
+
+    if (!onCardPress) {
+      return;
+    }
+
+    onCardPress(model);
+  }
+
   render() {
     const {
       model,
-      onPress,
-      onPressIn,
       hidden,
       renderCardContent,
-      cardContainer,
-      cardTitleText,
-      cardSubtitleText,
-      cardContentText
+      cardContainerStyle,
+      cardTitleTextStyle,
+      cardSubtitleTextStyle,
+      cardContentTextStyle
     } = this.props;
 
     return (
-      <View style={[styles.container, cardContainer, hidden && { opacity: 0 }]}>
+      <View style={[styles.container, cardContainerStyle, hidden && { opacity: 0 }]}>
         <TouchableOpacity
-          onPress={onPress}
-          onPressIn={onPressIn}>
+          onPress={this.onPress}>
           {renderCardContent &&
             renderCardContent(model)}
 
@@ -52,12 +64,12 @@ class Card extends Component<CardPropTypes> {
             <React.Fragment>
               <View style={styles.cardHeaderContainer}>
                 <View style={styles.cardTitleContainer}>
-                  <Text style={[cardTitleText, styles.cardTitleText]}>{model.title}</Text>
+                  <Text style={[cardTitleTextStyle, styles.cardTitleText]}>{model.title}</Text>
                 </View>
-                <Text style={[cardSubtitleText, styles.cardSubtitleText]}>{model.subtitle}</Text>
+                <Text style={[cardSubtitleTextStyle, styles.cardSubtitleText]}>{model.subtitle}</Text>
               </View>
               <View style={styles.cardContentContainer}>
-                <Text style={[cardContentText, styles.cardContentText]}>{model.description}</Text>
+                <Text style={[cardContentTextStyle, styles.cardContentText]}>{model.description}</Text>
               </View>
               {model.tags && model.tags.length > 0 && (
                 <Tags items={model.tags} />
@@ -69,7 +81,7 @@ class Card extends Component<CardPropTypes> {
   }
 }
 
-export default withDeviceInfoContext(Card);
+export default withKanbanContext(Card);
 
 const styles = StyleSheet.create({
   container: {

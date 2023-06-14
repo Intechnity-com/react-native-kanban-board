@@ -1,18 +1,19 @@
 import React, { Component, RefObject } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
+
 import { COLUMN_MARGIN } from '../../board-consts';
 import { Dot } from './dot.component';
-import { DeviceInfoType, withDeviceInfoContext } from '../device-info.provider';
+import { KanbanContext, withKanbanContext } from '../kanban-context.provider';
 import { ColumnModel } from '../../models/column-model';
 
 const INITIAL_ACTIVE_ITEM = 0;
 
-type Props = DeviceInfoType & {
+type Props = KanbanContext & {
   data: ColumnModel[];
   itemWidth: number;
   oneColumn: boolean;
   onScrollEndDrag: () => void;
-  renderItem: (item: ColumnModel) => JSX.Element;
+  renderItem: (item: ColumnModel, isOneColumn: boolean) => JSX.Element;
   sliderWidth: number;
   scrollEnabled: boolean;
 };
@@ -114,7 +115,7 @@ export class ColumnsCarouselContainer extends Component<Props, State> {
           onMomentumScrollEnd={this.onMomentumScrollEnd}>
           {data.map((item, index) => (
             <View key={`carousel-item-${index}`} style={{ width: this.props.itemWidth, marginRight: COLUMN_MARGIN }}>
-              {this.props.renderItem(item)}
+              {this.props.renderItem(item, oneColumn)}
             </View>
           ))}
         </ScrollView>
@@ -133,7 +134,7 @@ export class ColumnsCarouselContainer extends Component<Props, State> {
   }
 }
 
-export default withDeviceInfoContext(ColumnsCarouselContainer);
+export default withKanbanContext(ColumnsCarouselContainer);
 
 const styles = StyleSheet.create({
   container: {
