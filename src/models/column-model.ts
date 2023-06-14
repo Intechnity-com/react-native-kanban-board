@@ -28,6 +28,12 @@ export class ColumnModel {
     return this._isRenderedAndVisible;
   }
 
+  /**
+   * Creates a new ColumnModel instance.
+   * @param {string} id - The ID of the column.
+   * @param {string} title - The title of the column.
+   * @param {*} value - The value associated with the column.
+   */
   constructor(id: string, title: string, value: any) {
     this.id = id;
     this.title = title;

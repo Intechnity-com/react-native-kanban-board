@@ -14,11 +14,37 @@ import { Tags } from './tags.component';
 import { KanbanContext, withKanbanContext } from '../kanban-context.provider';
 
 export type CardExternalProps = {
-  onCardPress?: (mode: CardModel) => void;
+  /**
+   * Callback function invoked when the card is pressed.
+   * @param {CardModel} model - The card model representing the pressed card.
+   */
+  onCardPress?: (model: CardModel) => void;
+
+  /**
+   * Function that renders the content of the card.
+   * @param {CardModel} model - The card model to render the content for.
+   * @returns {JSX.Element | null} - The JSX element representing the card content, or null to render the default content.
+   */
   renderCardContent?(model: CardModel): JSX.Element | null;
+
+  /**
+   * Custom style for the card container.
+   */
   cardContainerStyle?: StyleProp<ViewStyle>;
+
+  /**
+   * Custom style for the card title text.
+   */
   cardTitleTextStyle?: StyleProp<TextStyle>;
+
+  /**
+   * Custom style for the card subtitle text.
+   */
   cardSubtitleTextStyle?: StyleProp<TextStyle>;
+
+  /**
+   * Custom style for the card content text.
+   */
   cardContentTextStyle?: StyleProp<TextStyle>;
 }
 

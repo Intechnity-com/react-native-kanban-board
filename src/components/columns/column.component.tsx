@@ -22,8 +22,21 @@ import { COLUMN_MARGIN } from '../../board-consts';
 import { KanbanContext, withKanbanContext } from '../kanban-context.provider';
 
 export type ColumnExternalProps = {
+  /**
+   * Function that renders the content for an empty column.
+   * @param {ColumnModel} item - The column model representing the empty column.
+   * @returns {JSX.Element} - The JSX element representing the content for the empty column.
+   */
   renderEmptyColumn?: (item: ColumnModel) => JSX.Element;
+
+  /**
+   * Custom style for the column header container.
+   */
   columnHeaderContainerStyle?: StyleProp<ViewStyle>;
+
+  /**
+   * Custom style for the column header title text.
+   */
   columnHeaderTitleStyle?: StyleProp<TextStyle>;
 }
 

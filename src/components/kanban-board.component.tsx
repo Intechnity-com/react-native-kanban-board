@@ -28,10 +28,26 @@ import { KanbanContextProvider, KanbanContext, withKanbanContext } from './kanba
 export type KanbanBoardProps =
   CardExternalProps &
   ColumnExternalProps & {
+    /**
+     * An array of column models representing the columns in the Kanban board.
+     */
     columns: ColumnModel[];
+
+    /**
+     * An array of card models representing the cards in the Kanban board.
+     */
     cards: CardModel[];
+
+    /**
+     * Callback function invoked when a card is dragged and dropped onto another column.
+     * @param {ColumnModel} srcColumn - The source column from which the card is dragged.
+     * @param {ColumnModel} destColumn - The destination column onto which the card is dropped.
+     * @param {CardModel} item - The card model that was dragged and dropped.
+     * @param {number} targetIdx - The index at which the card was dropped within the destination column.
+     */
     onDragEnd: (srcColumn: ColumnModel, destColumn: ColumnModel, item: CardModel, targetIdx: number) => void;
   }
+
 
 type Props =
   ReactTimeoutProps &

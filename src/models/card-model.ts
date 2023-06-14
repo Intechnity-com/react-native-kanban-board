@@ -43,6 +43,17 @@ export class CardModel {
     return this._invalidatedDimensions;
   }
 
+  /**
+   * Creates a new CardModel instance.
+   * @param {string | undefined} id - The ID of the card.
+   * @param {string} columnId - The ID of the column the card belongs to.
+   * @param {string} title - The title of the card.
+   * @param {string} subtitle - The subtitle of the card.
+   * @param {string | undefined} description - The description of the card (optional).
+   * @param {Tag[]} tags - The tags associated with the card.
+   * @param {*} item - The item associated with the card.
+   * @param {number} sortOrder - The sort order of the card within its column.
+   */
   constructor(id: string | undefined,
     columnId: string,
     title: string,
