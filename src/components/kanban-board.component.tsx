@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { RefObject } from 'react';
 import {
   Animated,
   StyleSheet,
@@ -17,7 +17,7 @@ import ReactTimeout, { ReactTimeoutProps } from 'react-timeout';
 
 import { CardModel } from '../models/card-model';
 import { ColumnModel } from '../models/column-model';
-import WrappedColumnsCarouselContainer, { ColumnsCarouselContainer } from './columns/columns-carousel-container.component';
+import WrappedColumnsSnapContainer, { ColumnSnapContainer } from './columns/columns-carousel-container.component';
 import { BoardState } from '../models/board-state';
 import { BoardManager } from '../utils/board-manager';
 import { logError } from '../utils/logger';
@@ -73,7 +73,7 @@ class KanbanBoard extends React.Component<Props, State> {
   isColumnScrolling: boolean;
   dragX: number = 0;
   dragY: number = 0;
-  carouselContainer: ColumnsCarouselContainer | null;
+  carouselRef: RefObject<ColumnSnapContainer> = React.createRef<ColumnSnapContainer>();
   columnListViewsMap: Map<string, any> = new Map<string, any>(); //any is here Column
 
   constructor(props: Props) {
@@ -97,7 +97,6 @@ class KanbanBoard extends React.Component<Props, State> {
     }
 
     this.isColumnScrolling = false;
-    this.carouselContainer = null;
   }
 
   componentDidMount() {
@@ -364,25 +363,21 @@ class KanbanBoard extends React.Component<Props, State> {
         this.snapTimeout = undefined;
       }
 
-      if (this.carouselContainer) {
-        if (!this.snapTimeout && shouldSnapPrevOrScrollLeft) {
-          this.snapTimeout = setTimeout(() => {
-            this.carouselContainer?.snapToPrev();
-            this.snapTimeout = undefined;
-          }, snapAfterTimeout);
-        } else if (!this.snapTimeout && shouldSnapNextOrScrollRight) {
-          this.snapTimeout = setTimeout(() => {
-            this.carouselContainer?.snapToNext();
-            this.snapTimeout = undefined;
-          }, snapAfterTimeout);
-        }
+      if (!this.snapTimeout && shouldSnapPrevOrScrollLeft) {
+        this.snapTimeout = setTimeout(() => {
+          this.carouselRef.current?.snapToPrev();
+          this.snapTimeout = undefined;
+        }, snapAfterTimeout);
+      } else if (!this.snapTimeout && shouldSnapNextOrScrollRight) {
+        this.snapTimeout = setTimeout(() => {
+          this.carouselRef.current?.snapToNext();
+          this.snapTimeout = undefined;
+        }, snapAfterTimeout);
       }
 
       let targetColumn: ColumnModel | undefined;
 
-      if (this.carouselContainer) {
-        targetColumn = this.carouselContainer!.currentItem;
-      }
+      targetColumn = this.carouselRef.current!.getCurrentItem();
 
       if (targetColumn) {
         this.moveCard(draggedItem!, this.dragX, this.dragY, targetColumn);
@@ -406,8 +401,7 @@ class KanbanBoard extends React.Component<Props, State> {
 
     if (state === rnState.ACTIVE) {
       this.onDragStart(event);
-    }
-    else if (state === rnState.END || state === rnState.CANCELLED) {
+    } else if (state === rnState.END || state === rnState.CANCELLED) {
       this.onDragEnd();
     }
   }
@@ -473,7 +467,13 @@ class KanbanBoard extends React.Component<Props, State> {
       var targetCards = this.state.boardState.columnCardsMap.get(destColumn.id);
       var targetCardIndex = targetCards?.indexOf(draggedItem) ?? 0;
 
-      return onDragEnd && onDragEnd(srcColumn, destColumn, draggedItem!, targetCardIndex);
+      if (onDragEnd) {
+        onDragEnd(srcColumn, destColumn, draggedItem!, targetCardIndex);
+      }
+
+      this.setState({
+        draggedItem: undefined
+      });
 
     } catch (error) {
       logError('onDragEnd: ' + error);
@@ -504,22 +504,20 @@ class KanbanBoard extends React.Component<Props, State> {
     let item: CardModel | undefined;
     let shouldStartDragging = false;
 
-    if (this.carouselContainer) {
-      column = this.carouselContainer?.currentItem;
-      if (!column) {
-        return;
-      }
-      item = BoardManager.findCardInColumn(column, this.state.boardState, event.nativeEvent.absoluteY);
-
-      if (!item || !item.dimensions) {
-        return;
-      }
-
-      const columnIndex = this.carouselContainer?.getIndex(column);
-      const currentCarouselColumnIndex = this.carouselContainer?.currentItemIndex ?? 0;
-
-      shouldStartDragging = columnIndex === currentCarouselColumnIndex;
+    column = this.carouselRef.current?.getCurrentItem();
+    if (!column) {
+      return;
     }
+    item = BoardManager.findCardInColumn(column, this.state.boardState, event.nativeEvent.absoluteY);
+
+    if (!item || !item.dimensions) {
+      return;
+    }
+
+    const columnIndex = this.carouselRef.current?.getIndex(column);
+    const currentCarouselColumnIndex = this.carouselRef.current?.getCurrentItemIndex() ?? 0;
+
+    shouldStartDragging = columnIndex === currentCarouselColumnIndex;
 
     if (shouldStartDragging) {
       const draggedItemWidth = item!.dimensions!.width;
@@ -552,18 +550,7 @@ class KanbanBoard extends React.Component<Props, State> {
       return;
     }
 
-    if (this.carouselContainer) {
-      const activeColumn = this.carouselContainer.currentItem;
-
-      console.log("carousel container: " + JSON.stringify(this.carouselContainer));
-      console.log("pressed 5, activeColumn: " + JSON.stringify(activeColumn));
-      if (activeColumn?.id == card.columnId) {
-        console.log("pressed 6")
-        onCardPress(card);
-      }
-    } else {
-      onCardPress(card);
-    }
+    onCardPress(card);
   }
 
   onScrollEnd = () => {
@@ -683,7 +670,7 @@ class KanbanBoard extends React.Component<Props, State> {
     const oneColumn = columns.length === 1;
 
     return (
-      <GestureHandlerRootView>
+      <GestureHandlerRootView style={styles.boardContainer}>
         <KanbanContextProvider>
           <LongPressGestureHandler
             maxDist={Number.MAX_SAFE_INTEGER}
@@ -693,8 +680,8 @@ class KanbanBoard extends React.Component<Props, State> {
               style={styles.boardContainer}
               onLayout={this.setBoardPositionY}>
 
-              <WrappedColumnsCarouselContainer
-                ref={(c: ColumnsCarouselContainer) => { this.carouselContainer = c }}
+              <WrappedColumnsSnapContainer
+                ref={this.carouselRef}
                 data={columns}
                 onScrollEndDrag={this.onScrollEnd}
                 scrollEnabled={!movingMode}
@@ -702,6 +689,12 @@ class KanbanBoard extends React.Component<Props, State> {
                 sliderWidth={deviceWidth}
                 itemWidth={cardWidth}
                 oneColumn={oneColumn}
+                deviceWidth={this.props.deviceWidth}
+                isLandscape={this.props.isLandscape}
+                columnWidth={this.props.columnWidth}
+                oneColumnWidth={this.props.oneColumnWidth}
+                cardWidth={this.props.cardWidth}
+                noOfColumns={this.props.noOfColumns}
               />
 
               {this.renderDragCard()}

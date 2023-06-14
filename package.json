@@ -158,7 +158,7 @@
     ]
   },
   "dependencies": {
-    "react-native-gesture-handler": "^2.10.2",
+    "react-native-gesture-handler": "^2.9.0",
     "react-timeout": "^2.0.1"
   }
 }

@@ -3,7 +3,7 @@ import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View }
 
 import { COLUMN_MARGIN } from '../../board-consts';
 import { Dot } from './dot.component';
-import { KanbanContext, withKanbanContext } from '../kanban-context.provider';
+import { KanbanContext } from '../kanban-context.provider';
 import { ColumnModel } from '../../models/column-model';
 
 const INITIAL_ACTIVE_ITEM = 0;
@@ -22,7 +22,7 @@ type State = {
   activeItemIndex: number;
 };
 
-export class ColumnsCarouselContainer extends Component<Props, State> {
+export class ColumnSnapContainer extends Component<Props, State> {
   carouselRef: RefObject<ScrollView> = React.createRef<ScrollView>();
 
   constructor(props: Props) {
@@ -43,13 +43,11 @@ export class ColumnsCarouselContainer extends Component<Props, State> {
     }
   }
 
-  get currentItemIndex() {
+  getCurrentItemIndex() {
     return this.state.activeItemIndex;
   }
 
-  get currentItem(): ColumnModel | undefined {
-    console.log("this.state.activeItemIndex: " + this.state.activeItemIndex);
-
+  getCurrentItem(): ColumnModel | undefined {
     return this.props.data[this.state.activeItemIndex];
   }
 
@@ -135,7 +133,7 @@ export class ColumnsCarouselContainer extends Component<Props, State> {
   }
 }
 
-export default withKanbanContext(ColumnsCarouselContainer);
+export default ColumnSnapContainer;
 
 const styles = StyleSheet.create({
   container: {
