@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, Alert, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, Alert, StyleSheet, StatusBar, Button } from 'react-native';
 import { KanbanBoard, ColumnModel, CardModel } from '@intechnity/react-native-kanban-board';
 
 type AppState = {
@@ -8,6 +8,8 @@ type AppState = {
 }
 
 class App extends React.Component<{}, AppState> {
+  exampleCardNo: number = 1;
+
   constructor(props: {}) {
     super(props);
 
@@ -56,8 +58,7 @@ class App extends React.Component<{}, AppState> {
         "3rd Card",
         "Example card",
         "test description",
-        [
-        ],
+        [],
         null,
         1
       )
@@ -69,8 +70,34 @@ class App extends React.Component<{}, AppState> {
     }
   }
 
+  addNewCard = () => {
+    const { cards } = this.state;
+
+    const newCard = new CardModel(
+      "Generated card " + this.exampleCardNo++,
+      "new",
+      "New card",
+      "Example card",
+      "Some description",
+      [],
+      null,
+      1
+    );
+
+    let newCards = [
+      ...cards,
+      newCard
+    ];
+
+    this.setState({
+      cards: newCards
+    });
+  }
+
   onCardDragEnd = (srcColumn: ColumnModel, destColumn: ColumnModel, item: CardModel, cardIdx: number) => {
-    Alert.alert(`Card finished dragging. Item: ${item.title}, from column: ${srcColumn.id}, to column: ${destColumn.id}, card index: ${cardIdx}`);
+    Alert.alert(
+      'Card finished dragging',
+      `Item: ${item.title} \nFrom column: ${srcColumn.id} \nTo column: ${destColumn.id} \nCard index: ${cardIdx}`);
   }
 
   onCardPress = (card: CardModel) => {
@@ -84,11 +111,16 @@ class App extends React.Component<{}, AppState> {
       <View style={styles.container}>
         <Text>Example kanban board</Text>
 
+        <View style={styles.actionsContainer}>
+          <Button onPress={this.addNewCard} title='Add new card' />
+        </View>
+
         <KanbanBoard
           columns={columns}
           cards={cards}
           onDragEnd={(srcColumn, destColumn, item, targetIdx) => this.onCardDragEnd(srcColumn, destColumn, item, targetIdx)}
           onCardPress={(item) => this.onCardPress(item)}
+          style={styles.kanbanStyle}
         />
       </View>
     );
@@ -103,5 +135,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionsContainer: {
+    marginTop: 20
+  },
+  kanbanStyle: {
+    marginTop: 20
   }
 });

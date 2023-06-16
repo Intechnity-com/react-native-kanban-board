@@ -47,15 +47,13 @@ type Props = KanbanContext &
     renderCardItem: (item: CardModel) => JSX.Element;
     isWithCountBadge: boolean;
     movingMode: boolean;
-    oneColumn: boolean;
-    onScrollingStarted: () => void;
-    onScrollingEnded: () => void;
+    singleDataColumnAvailable: boolean;
   };
 
 type State = {
 }
 
-class Column extends React.Component<Props, State> {
+export class Column extends React.Component<Props, State> {
   scrollingDown: boolean = false;
   flatList: React.RefObject<FlatList<CardModel>> = React.createRef<FlatList<CardModel>>();
   viewabilityConfig: any = {
@@ -77,11 +75,8 @@ class Column extends React.Component<Props, State> {
 
   handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const {
-      column,
-      onScrollingStarted
+      column
     } = this.props;
-
-    onScrollingStarted();
 
     const liveOffset = event.nativeEvent.contentOffset.y;
     this.scrollingDown = liveOffset > column.scrollOffset;
@@ -89,8 +84,7 @@ class Column extends React.Component<Props, State> {
 
   endScrolling = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const {
-      column,
-      onScrollingEnded,
+      column
     } = this.props;
 
     const currentOffset = event.nativeEvent.contentOffset.y;
@@ -100,7 +94,6 @@ class Column extends React.Component<Props, State> {
     if (scrollingDownEnded || scrollingUpEnded) {
       column.setScrollOffset(currentOffset);
       BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.props.boardState);
-      onScrollingEnded();
     }
   }
 
@@ -109,10 +102,7 @@ class Column extends React.Component<Props, State> {
   }
 
   onMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { onScrollingEnded } = this.props;
-
     this.endScrolling(event);
-    onScrollingEnded();
   }
 
   onContentSizeChange = (_: number, contentHeight: number) => {
@@ -131,7 +121,7 @@ class Column extends React.Component<Props, State> {
       column,
       renderCardItem,
       isWithCountBadge,
-      oneColumn,
+      singleDataColumnAvailable,
       movingMode,
       boardState,
       oneColumnWidth,
@@ -183,8 +173,8 @@ class Column extends React.Component<Props, State> {
         onLayout={this.measureColumn}
         style={[
           styles.columnContainer, {
-            width: oneColumn ? oneColumnWidth : columnWidth,
-            marginRight: oneColumn ? 0 : COLUMN_MARGIN
+            width: singleDataColumnAvailable ? oneColumnWidth : columnWidth,
+            marginRight: singleDataColumnAvailable ? 0 : COLUMN_MARGIN
           }]}>
         <View style={[styles.columnHeaderContainer, columnHeaderContainerStyle]}>
           <Text style={[styles.columnHeaderTitle, columnHeaderTitleStyle]}>{column.title}</Text>
@@ -201,7 +191,7 @@ class Column extends React.Component<Props, State> {
   }
 }
 
-export default withKanbanContext(Column);
+export default Column;
 
 const styles = StyleSheet.create({
   columnContainer: {

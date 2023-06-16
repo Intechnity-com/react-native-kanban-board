@@ -2,14 +2,16 @@ export function logError(err: any) {
   const asError = err as Error;
   const asString = err as string;
 
+  console.error(err);
+
   if (asError != null) {
-    console.log(asError.message);
-    console.log(asError.stack);
+    console.error(asError.message);
+    console.error(asError.stack);
   }
   else if (asString != null) {
-    console.log(asString);
+    console.error(asString);
   }
   else {
-    console.log(JSON.stringify(err));
+    console.error(JSON.stringify(err));
   }
 }

@@ -12,8 +12,10 @@ export class Badge extends Component<Props> {
   render() {
     const { value, backgroundColor, badgeStyle, textStyle } = this.props;
 
+    const color = backgroundColor || '#000';
+
     return (
-      <View style={[styles.badge, badgeStyle, { backgroundColor: backgroundColor || '#000' }]}>
+      <View style={[styles.badge, { borderColor: color, backgroundColor: color }, badgeStyle]}>
         <Text style={[styles.text, textStyle]}>{value}</Text>
       </View>
     );
@@ -26,8 +28,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    backgroundColor: '#000'
+    paddingHorizontal: 10
   },
   text: {
     color: '#fff',

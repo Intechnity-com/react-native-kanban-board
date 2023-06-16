@@ -3,7 +3,9 @@ import {
   Animated,
   StyleSheet,
   View,
-  LayoutChangeEvent
+  LayoutChangeEvent,
+  StyleProp,
+  ViewStyle
 } from 'react-native';
 import {
   GestureEvent,
@@ -23,7 +25,7 @@ import { BoardManager } from '../utils/board-manager';
 import { logError } from '../utils/logger';
 import { MAX_DEG, MAX_RANGE } from '../board-consts';
 import Card, { CardExternalProps } from './cards/card.component';
-import Column, { ColumnExternalProps } from './columns/column.component';
+import WrappedColumn, { Column, ColumnExternalProps } from './columns/column.component';
 import { KanbanContextProvider, KanbanContext, withKanbanContext } from './kanban-context.provider';
 
 export type KanbanBoardProps =
@@ -47,6 +49,11 @@ export type KanbanBoardProps =
      * @param {number} targetIdx - The index at which the card was dropped within the destination column.
      */
     onDragEnd: (srcColumn: ColumnModel, destColumn: ColumnModel, item: CardModel, targetIdx: number) => void;
+
+    /**
+     * Style of the kanban container.
+     */
+    style: StyleProp<ViewStyle>;
   }
 
 
@@ -70,11 +77,10 @@ type State = {
 }
 
 class KanbanBoard extends React.Component<Props, State> {
-  isColumnScrolling: boolean;
   dragX: number = 0;
   dragY: number = 0;
   carouselRef: RefObject<ColumnSnapContainer> = React.createRef<ColumnSnapContainer>();
-  columnListViewsMap: Map<string, any> = new Map<string, any>(); //any is here Column
+  columnListViewsMap: Map<string, Column | null> = new Map<string, Column | null>();
 
   constructor(props: Props) {
     super(props);
@@ -95,8 +101,6 @@ class KanbanBoard extends React.Component<Props, State> {
       draggedItemWidth: 0,
       draggedItemHeight: 0
     }
-
-    this.isColumnScrolling = false;
   }
 
   componentDidMount() {
@@ -156,6 +160,7 @@ class KanbanBoard extends React.Component<Props, State> {
   };
 
   refreshBoard(columns?: ColumnModel[], cards?: CardModel[]) {
+    console.log("TODO: refreshBoard called");
     const { boardState } = this.state;
 
     var columnsMap = new Map<string, ColumnModel>(boardState.columnsMap);
@@ -198,7 +203,6 @@ class KanbanBoard extends React.Component<Props, State> {
 
   moveCard(draggedItem: CardModel, _x: number, y: number, targetColumn: ColumnModel) {
     try {
-
       const columns = this.state.boardState.columnsMap;
       const fromColumn = columns.get(draggedItem.columnId);
 
@@ -326,6 +330,7 @@ class KanbanBoard extends React.Component<Props, State> {
         deviceWidth
       } = this.props;
       const {
+        boardState,
         draggedItem,
         movingMode,
         draggedItemWidth,
@@ -375,10 +380,7 @@ class KanbanBoard extends React.Component<Props, State> {
         }, snapAfterTimeout);
       }
 
-      let targetColumn: ColumnModel | undefined;
-
-      targetColumn = this.carouselRef.current!.getCurrentItem();
-
+      const targetColumn = BoardManager.findColumn(boardState, event.nativeEvent.absoluteX);
       if (targetColumn) {
         this.moveCard(draggedItem!, this.dragX, this.dragY, targetColumn);
         const scrollResult = BoardManager.getScrollingDirection(targetColumn, this.dragY);
@@ -387,8 +389,8 @@ class KanbanBoard extends React.Component<Props, State> {
           return;
         }
 
-        if (this.shouldScroll(scrollResult.scrolling, scrollResult.offset, targetColumn)) {
-          this.scroll(targetColumn, scrollResult.offset);
+        if (this.shouldScrollColumn(scrollResult.scrolling, scrollResult.offset, targetColumn)) {
+          this.scrollColumn(targetColumn, scrollResult.offset);
         }
       }
     } catch (error) {
@@ -406,29 +408,20 @@ class KanbanBoard extends React.Component<Props, State> {
     }
   }
 
-  shouldScroll(scrolling: boolean, offset: number, column: ColumnModel) {
+  shouldScrollColumn(scrolling: boolean, offset: number, column: ColumnModel) {
     const placeToScroll = ((offset < 0 && column.scrollOffset > 0) || (offset > 0 && column.scrollOffset < column.contentHeight))
 
     return scrolling && offset !== 0 && placeToScroll;
   }
 
-  onColumnScrollingStarted = () => {
-    this.isColumnScrolling = true;
-  }
-
-  onColumnScrollingEnded = () => {
-    this.isColumnScrolling = false;
-  }
-
-  scrollTimeout: NodeJS.Timeout | undefined = undefined;
-  scroll(column: ColumnModel, anOffset: number) {
+  scrollTimeout: ReactTimeout.Timer | undefined = undefined;
+  scrollColumn(column: ColumnModel, anOffset: number) {
     const { movingMode } = this.state;
 
     if (this.scrollTimeout || !movingMode) {
       return;
     }
 
-    this.onColumnScrollingStarted();
     const scrollOffset = column.scrollOffset + 40 * anOffset;
     column.setScrollOffset(scrollOffset);
     const columnComponent = this.columnListViewsMap.get(column.id);
@@ -439,13 +432,16 @@ class KanbanBoard extends React.Component<Props, State> {
       return;
     }
 
-    this.scrollTimeout = setTimeout(() => {
-      this.scrollTimeout = undefined;
-    }, 50);
+    if (this.props.setTimeout) {
+      this.scrollTimeout = this.props.setTimeout(() => {
+        this.scrollTimeout = undefined;
+      }, 50);
+    }
   }
 
   onDragEnd() {
     this.setState({ movingMode: false });
+
     const { draggedItem, pan, srcColumnId } = this.state;
     const { onDragEnd } = this.props;
 
@@ -455,7 +451,7 @@ class KanbanBoard extends React.Component<Props, State> {
 
     try {
       draggedItem.show();
-      this.refreshBoard();
+      this.refreshBoard(); // todo is this needed?
 
       const destColumnId = draggedItem.columnId;
       pan.setValue({ x: 0, y: 0 });
@@ -494,52 +490,45 @@ class KanbanBoard extends React.Component<Props, State> {
   }
 
   onDragStart(event: HandlerStateChangeEvent<LongPressGestureHandlerEventPayload>) {
-    const { movingMode } = this.state;
+    const {
+      boardState,
+      movingMode
+    } = this.state;
 
     if (movingMode) {
       return;
     }
 
-    let column: ColumnModel | undefined;
-    let item: CardModel | undefined;
-    let shouldStartDragging = false;
+    const column = BoardManager.findColumn(boardState, event.nativeEvent.absoluteX);
 
-    column = this.carouselRef.current?.getCurrentItem();
     if (!column) {
       return;
     }
-    item = BoardManager.findCardInColumn(column, this.state.boardState, event.nativeEvent.absoluteY);
+    const item = BoardManager.findCardInColumn(column, this.state.boardState, event.nativeEvent.absoluteY);
 
     if (!item || !item.dimensions) {
       return;
     }
 
-    const columnIndex = this.carouselRef.current?.getIndex(column);
-    const currentCarouselColumnIndex = this.carouselRef.current?.getCurrentItemIndex() ?? 0;
+    const draggedItemWidth = item!.dimensions!.width;
+    const draggedItemHeight = item!.dimensions!.height;
 
-    shouldStartDragging = columnIndex === currentCarouselColumnIndex;
+    this.state.pan.setValue({
+      x: this.state.startingX - draggedItemWidth / 2,
+      y: this.state.startingY - draggedItemHeight / 2
+    });
 
-    if (shouldStartDragging) {
-      const draggedItemWidth = item!.dimensions!.width;
-      const draggedItemHeight = item!.dimensions!.height;
-
-      this.state.pan.setValue({
-        x: this.state.startingX - draggedItemWidth / 2,
-        y: this.state.startingY - draggedItemHeight / 2
-      });
-
-      item!.hide();
-      this.setState({
-        movingMode: true,
-        draggedItem: item,
-        srcColumnId: item!.columnId,
-        startingX: event.nativeEvent.absoluteX,
-        startingY: event.nativeEvent.absoluteY,
-        draggedItemWidth: draggedItemWidth,
-        draggedItemHeight: draggedItemHeight
-      });
-      this.rotate(MAX_DEG);
-    }
+    item!.hide(); // hide this item so we can display the 'dragged' item
+    this.setState({
+      movingMode: true,
+      draggedItem: item,
+      srcColumnId: item!.columnId,
+      startingX: event.nativeEvent.absoluteX,
+      startingY: event.nativeEvent.absoluteY,
+      draggedItemWidth: draggedItemWidth,
+      draggedItemHeight: draggedItemHeight
+    });
+    this.rotate(MAX_DEG);
   }
 
   cardPressed = (card: CardModel) => {
@@ -626,7 +615,7 @@ class KanbanBoard extends React.Component<Props, State> {
     );
   }
 
-  renderColumn = (columnModel: ColumnModel, oneColumn: boolean) => {
+  renderColumn = (columnModel: ColumnModel, singleDataColumnAvailable: boolean) => {
     const {
       renderEmptyColumn,
       columnHeaderContainerStyle,
@@ -638,7 +627,7 @@ class KanbanBoard extends React.Component<Props, State> {
     } = this.state;
 
     return (
-      <Column
+      <WrappedColumn
         ref={ref => this.columnListViewsMap.set(columnModel.id, ref)}
         key={columnModel.id}
         boardState={boardState}
@@ -646,12 +635,16 @@ class KanbanBoard extends React.Component<Props, State> {
         renderCardItem={this.renderCard}
         isWithCountBadge={true}
         movingMode={movingMode}
-        oneColumn={oneColumn}
-        onScrollingStarted={this.onColumnScrollingStarted}
-        onScrollingEnded={this.onColumnScrollingEnded}
+        singleDataColumnAvailable={singleDataColumnAvailable}
         renderEmptyColumn={renderEmptyColumn}
         columnHeaderContainerStyle={columnHeaderContainerStyle}
         columnHeaderTitleStyle={columnHeaderTitleStyle}
+        deviceWidth={this.props.deviceWidth}
+        isLandscape={this.props.isLandscape}
+        columnWidth={this.props.columnWidth}
+        oneColumnWidth={this.props.oneColumnWidth}
+        cardWidth={this.props.cardWidth}
+        displayedColumns={this.props.displayedColumns}
       />
     )
   }
@@ -659,7 +652,8 @@ class KanbanBoard extends React.Component<Props, State> {
   render() {
     const {
       deviceWidth,
-      cardWidth
+      cardWidth,
+      style
     } = this.props;
     const {
       boardState,
@@ -667,10 +661,9 @@ class KanbanBoard extends React.Component<Props, State> {
     } = this.state;
 
     const columns = Array.from(boardState.columnsMap.values());
-    const oneColumn = columns.length === 1;
 
     return (
-      <GestureHandlerRootView style={styles.boardContainer}>
+      <GestureHandlerRootView style={[styles.boardContainer, style]}>
         <KanbanContextProvider>
           <LongPressGestureHandler
             maxDist={Number.MAX_SAFE_INTEGER}
@@ -688,13 +681,12 @@ class KanbanBoard extends React.Component<Props, State> {
                 renderItem={this.renderColumn}
                 sliderWidth={deviceWidth}
                 itemWidth={cardWidth}
-                oneColumn={oneColumn}
                 deviceWidth={this.props.deviceWidth}
                 isLandscape={this.props.isLandscape}
                 columnWidth={this.props.columnWidth}
                 oneColumnWidth={this.props.oneColumnWidth}
                 cardWidth={this.props.cardWidth}
-                noOfColumns={this.props.noOfColumns}
+                displayedColumns={this.props.displayedColumns}
               />
 
               {this.renderDragCard()}

@@ -63,6 +63,17 @@ export class BoardManager {
     }
   }
 
+  static findColumn(boardState: BoardState, x: number): ColumnModel | undefined {
+    let visibleColumns = this.getVisibleColumns(boardState);
+    let column = visibleColumns.filter(col => col.dimensions && x >= col.dimensions.x && x <= col.dimensions.x + col.dimensions.width);
+
+    if (column.length > 0) {
+      return column[0];
+    }
+
+    return undefined;
+  }
+
   static findCardInColumn(column: ColumnModel, boardState: BoardState, y: number): CardModel | undefined {
     const visibleItems = this.getVisibleCards(column, boardState);
     if (!visibleItems || visibleItems.length == 0) {
@@ -130,17 +141,6 @@ export class BoardManager {
 
     const visibleCards = cards.filter(x => x.isRenderedAndVisible);
     return visibleCards;
-  }
-
-  static findColumn(boardState: BoardState, x: number): ColumnModel | undefined {
-    let visibleColumns = this.getVisibleColumns(boardState);
-    let column = visibleColumns.filter(col => col.dimensions && x >= col.dimensions.x && x <= col.dimensions.x + col.dimensions.width);
-
-    if (column.length > 0) {
-      return column[0];
-    }
-
-    return undefined;
   }
 
   static getVisibleColumns(boardState: BoardState): ColumnModel[] {

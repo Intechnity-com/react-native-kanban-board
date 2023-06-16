@@ -9,7 +9,7 @@ export type KanbanContext = {
   columnWidth: number;
   oneColumnWidth: number;
   cardWidth: number;
-  noOfColumns: number;
+  displayedColumns: number;
 };
 
 function isTablet(): boolean {
@@ -52,7 +52,7 @@ function getKanbanContext(): KanbanContext {
     columnWidth: columnWidth,
     oneColumnWidth: oneColumnWidth,
     cardWidth: cardWidth,
-    noOfColumns: noOfColumns
+    displayedColumns: noOfColumns
   };
 
   return deviceInfoContext;

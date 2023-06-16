@@ -5,21 +5,22 @@ import { COLUMN_MARGIN } from '../../board-consts';
 import { Dot } from './dot.component';
 import { KanbanContext } from '../kanban-context.provider';
 import { ColumnModel } from '../../models/column-model';
+import { Platform } from 'react-native';
 
 const INITIAL_ACTIVE_ITEM = 0;
 
 type Props = KanbanContext & {
   data: ColumnModel[];
   itemWidth: number;
-  oneColumn: boolean;
   onScrollEndDrag: () => void;
-  renderItem: (item: ColumnModel, isOneColumn: boolean) => JSX.Element;
+  renderItem: (item: ColumnModel, singleDataColumnAvailable: boolean) => JSX.Element;
   sliderWidth: number;
   scrollEnabled: boolean;
 };
 
 type State = {
-  activeItemIndex: number;
+  oneColumnActiveItemIndex: number;
+  scrollOffsetX: number;
 };
 
 export class ColumnSnapContainer extends Component<Props, State> {
@@ -29,26 +30,16 @@ export class ColumnSnapContainer extends Component<Props, State> {
     super(props);
 
     this.state = {
-      activeItemIndex: INITIAL_ACTIVE_ITEM,
+      oneColumnActiveItemIndex: INITIAL_ACTIVE_ITEM,
+      scrollOffsetX: 0
     };
   }
 
-  componentDidMount() {
-    this.scrollToItem(this.state.activeItemIndex);
-  }
-
   componentDidUpdate(prevProps: Props) {
-    if (prevProps.itemWidth !== this.props.itemWidth || prevProps.sliderWidth !== this.props.sliderWidth) {
-      this.scrollToItem(this.state.activeItemIndex);
+    if (this.props.displayedColumns === 1 &&
+      (prevProps.itemWidth !== this.props.itemWidth || prevProps.sliderWidth !== this.props.sliderWidth)) {
+      this.scrollToItem(this.state.oneColumnActiveItemIndex);
     }
-  }
-
-  getCurrentItemIndex() {
-    return this.state.activeItemIndex;
-  }
-
-  getCurrentItem(): ColumnModel | undefined {
-    return this.props.data[this.state.activeItemIndex];
   }
 
   onScrollEndDrag = () => {
@@ -57,41 +48,68 @@ export class ColumnSnapContainer extends Component<Props, State> {
   };
 
   onMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
+    this.onScrollEnd(event.nativeEvent.contentOffset.x);
+  };
+
+  onScrollEnd = (offsetX: number) => {
     const { itemWidth } = this.props;
+
     const activeItemIndex = Math.round(offsetX / itemWidth);
-    this.setState({ activeItemIndex });
+    this.setState({
+      oneColumnActiveItemIndex: activeItemIndex,
+      scrollOffsetX: offsetX
+    });
+
     this.onScrollEndDrag();
+  }
+
+  snapToPrev = () => {
+    const { itemWidth } = this.props;
+    const { scrollOffsetX } = this.state;
+
+    if (scrollOffsetX <= 0) {
+      return;
+    }
+
+    const prevOffset = Math.max(0, scrollOffsetX - itemWidth - COLUMN_MARGIN);
+    this.scrollToOffset(prevOffset);
+  };
+
+  snapToNext = () => {
+    const { data, itemWidth } = this.props;
+    const { scrollOffsetX } = this.state;
+
+    const maxScrollOffsetX = (data.length - 1) * (itemWidth + COLUMN_MARGIN);
+    const nextOffset = Math.min(maxScrollOffsetX, scrollOffsetX + itemWidth + COLUMN_MARGIN);
+
+    this.scrollToOffset(nextOffset);
   };
 
   scrollToItem(index: number) {
     const { itemWidth } = this.props;
-    const offset = index * itemWidth;
-    this.carouselRef.current?.scrollTo({ x: offset, y: 0, animated: true });
+    const offsetX = index * itemWidth;
+    this.carouselRef.current?.scrollTo({ x: offsetX, y: 0, animated: true });
+
+    if (Platform.OS === 'android') {
+      this.onScrollEnd(offsetX); // BUG on Android: onMomentumScrollEnd won't be invoked if scrolled programmatically
+    }
   }
 
-  snapToPrev = () => {
-    const { activeItemIndex } = this.state;
-    if (activeItemIndex > 0) {
-      this.scrollToItem(activeItemIndex - 1);
-    }
-  };
+  scrollToOffset(offsetX: number) {
+    offsetX = Math.round(offsetX);
+    this.carouselRef.current?.scrollTo({ x: offsetX, y: 0, animated: true });
 
-  snapToNext = () => {
-    const { activeItemIndex } = this.state;
-    const { data } = this.props;
-    if (activeItemIndex < data.length - 1) {
-      this.scrollToItem(activeItemIndex + 1);
+    if (Platform.OS === 'android') {
+      this.onScrollEnd(offsetX); // BUG on Android: onMomentumScrollEnd won't be invoked if scrolled programmatically
     }
-  };
-
-  getIndex(item: ColumnModel) {
-    return this.props.data.indexOf(item);
   }
 
   render() {
-    const { data, oneColumn, scrollEnabled, sliderWidth } = this.props;
-    const { activeItemIndex } = this.state;
+    const { data, displayedColumns, scrollEnabled, sliderWidth } = this.props;
+    const { oneColumnActiveItemIndex } = this.state;
+
+    const singleColumnDisplay = displayedColumns === 1;
+    const singleDataColumnAvailable = data.length === 1;
 
     return (
       <View style={styles.container}>
@@ -105,7 +123,7 @@ export class ColumnSnapContainer extends Component<Props, State> {
           pinchGestureEnabled={false}
           scrollsToTop={false}
           renderToHardwareTextureAndroid={true}
-          scrollEnabled={scrollEnabled && !oneColumn}
+          scrollEnabled={scrollEnabled}
           style={[styles.scrollContainer, { width: sliderWidth }]}
           contentContainerStyle={[styles.contentContainer, { paddingLeft: COLUMN_MARGIN }]}
           horizontal={true}
@@ -114,20 +132,21 @@ export class ColumnSnapContainer extends Component<Props, State> {
           onMomentumScrollEnd={this.onMomentumScrollEnd}>
           {data.map((item, index) => (
             <View key={`carousel-item-${index}`} style={{ width: this.props.itemWidth, marginRight: COLUMN_MARGIN }}>
-              {this.props.renderItem(item, oneColumn)}
+              {this.props.renderItem(item, singleDataColumnAvailable)}
             </View>
           ))}
         </ScrollView>
 
-        <View style={styles.positionIndicatorContainer}>
-          {data.map((_, index) => (
-            <Dot
-              key={`carousel-pos-indicator-${index}`}
-              color={activeItemIndex === index ? '#000000' : '#DDDDDD'}
-              style={styles.positionIndicator}
-            />
-          ))}
-        </View>
+        {singleColumnDisplay &&
+          <View style={styles.positionIndicatorContainer}>
+            {data.map((_, index) => (
+              <Dot
+                key={`carousel-pos-indicator-${index}`}
+                color={oneColumnActiveItemIndex === index ? '#000000' : '#DDDDDD'}
+                style={styles.positionIndicator}
+              />
+            ))}
+          </View>}
       </View>
     );
   }
