@@ -6,7 +6,6 @@ import { Rect } from '../models/rect';
 export class BoardManager {
   static SCROLL_TRESHOLD = 100;
 
-  // Function to update item visibility and column layout
   static updateItemsVisibility(boardState: BoardState, column: ColumnModel, visibleItems: CardModel[]) {
     const allItemsForCard = boardState.columnCardsMap.get(column.id);
     if (!allItemsForCard) {
@@ -15,6 +14,7 @@ export class BoardManager {
 
     this.updateColumnsLayoutAfterVisibilityChanged(boardState, column);
 
+    // todo is this needed?
     allItemsForCard.forEach(item => {
       const isVisible = visibleItems?.some(x => x.id === item.id) ?? false;
       item.setIsRenderedAndVisible(isVisible);
@@ -33,8 +33,7 @@ export class BoardManager {
         return;
       }
 
-      cards.forEach((card, index) => {
-        //const previousCard = index > 0 ? cards[index - 1] : undefined;
+      cards.forEach((card) => {
         card.validateAndMeasure();
       });
     });
@@ -90,10 +89,6 @@ export class BoardManager {
     if (items.length == 0) {
       return undefined;
     }
-
-    // console.log("getCardAtPosition: " + JSON.stringify(items.map(x => x.id)));
-    // console.log("getCardAtPosition: " + JSON.stringify(items.map(x => x.dimensions)));
-
     let item = items.find(i => this.isItemWithinY(y, dimensions, i));
 
     //if Y higher than first item, then select 1 item
@@ -141,8 +136,6 @@ export class BoardManager {
     if (!cards) {
       return [];
     }
-
-    //console.log("getVisibleCards: " + JSON.stringify(cards.map(x => x.dimensions)));
 
     const visibleCards = cards.filter(x => x.isRenderedAndVisible);
     return visibleCards;

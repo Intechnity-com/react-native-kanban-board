@@ -320,11 +320,9 @@ class KanbanBoard extends React.Component<Props, State> {
       return;
     }
 
-    // todo console.log("onDragEnd");
-
     try {
       draggedItem.show();
-      this.refreshBoard(); // todo is this needed?
+      this.refreshBoard(); // todo is this needed
 
       const destColumnId = draggedItem.columnId;
       pan.setValue({ x: 0, y: 0 });
@@ -365,7 +363,7 @@ class KanbanBoard extends React.Component<Props, State> {
         return;
       }
 
-      const items = BoardManager.getVisibleCards(targetColumn, this.state.boardState);
+      const items = this.state.boardState.columnCardsMap.get(targetColumn.id) ?? [];
       const itemAtPosition = BoardManager.getCardAtPosition(items, y, draggedItem.dimensions);
       if (!itemAtPosition) {
         return;
@@ -388,15 +386,8 @@ class KanbanBoard extends React.Component<Props, State> {
     var itemsFromColumn = newColumnCardsMap.get(fromColumn.id);
     var itemsToColumn = newColumnCardsMap.get(toColumn.id);
 
-    // todo console.log("moving to other node " + toColumn.id);
-
     itemsFromColumn = itemsFromColumn!.filter(x => x.id != item.id);
     itemsToColumn = itemsToColumn!.filter(x => x.id != item.id);
-
-    // todo if (itemsFromColumn.find(x => x.invalidatedDimensions) != undefined ||
-    //   itemsToColumn.find(x => x.invalidatedDimensions) != undefined) { // dont do anything if dimensions invalidated - means an move operation was just done
-    //   return;
-    // }
 
     itemsToColumn.push(item);
     item.columnId = toColumn.id;
@@ -412,59 +403,26 @@ class KanbanBoard extends React.Component<Props, State> {
         columnCardsMap: newColumnCardsMap
       }
     }, () => {
-      // todo item.setIsRenderedAndVisible(true);
       BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
     });
   }
 
-  switchItemsInColumn(draggedItem: CardModel, itemAtPosition: CardModel, toColumn: ColumnModel) {
+  switchItemsInColumn(draggedItem: CardModel, itemAtPosition: CardModel, column: ColumnModel) {
     var newColumnsMap = new Map<string, ColumnModel>(this.state.boardState.columnsMap);
     var newColumnCardsMap = new Map<string, CardModel[]>(this.state.boardState.columnCardsMap);
-    var cardsForCurrentColumn = newColumnCardsMap.get(toColumn.id)!;
+    var cardsForCurrentColumn = newColumnCardsMap.get(column.id)!;
 
     if (!cardsForCurrentColumn || cardsForCurrentColumn.find(x => x.invalidatedDimensions)) {
       return;
     }
 
-    draggedItem.setIsRenderedAndVisible(true);
-
-    let visibleItems = BoardManager.getVisibleCards(toColumn, this.state.boardState);
-
-    const draggedItemIndex = (visibleItems).findIndex(item => item.id === draggedItem.id);
-    const itemAtPositionIndex = (visibleItems).findIndex(item => item.id === itemAtPosition.id);
-    let itemsRange: CardModel[];
-    if (draggedItemIndex < itemAtPositionIndex) {
-      itemsRange = visibleItems.filter((_, index) => draggedItemIndex <= index && index <= itemAtPositionIndex);
-    } else {
-      itemsRange = visibleItems.filter((_, index) => itemAtPositionIndex <= index && index <= draggedItemIndex);
-    }
-
-    itemsRange.forEach((_, index) => {
-      const firstItem = itemsRange[index];
-      const secondItem = itemsRange[index + 1];
-      if (!firstItem || !secondItem) {
-        return;
-      }
-
-      const firstIndex = cardsForCurrentColumn!.indexOf(firstItem);
-      const secondIndex = cardsForCurrentColumn!.indexOf(secondItem);
-      // const firstY = firstItem.dimensions?.y ?? 0;
-      // const secondY = secondItem.dimensions?.y ?? 0;
-      // const firstRef = firstItem.ref;
-      // const secondRef = secondItem.ref;
-
-      cardsForCurrentColumn![firstIndex] = secondItem;
-      cardsForCurrentColumn![secondIndex] = firstItem;
-
-      // firstItem.setDimensions({ ...firstItem.dimensions!, y: secondY });
-      // secondItem.setDimensions({ ...secondItem.dimensions!, y: firstY });
-
-      // firstItem.setRef(secondRef);
-      // secondItem.setRef(firstRef);
-
-      firstItem.invalidate();
-      secondItem.invalidate();
+    const itemAtPositionIndex = cardsForCurrentColumn.findIndex(item => item.id === itemAtPosition.id);
+    cardsForCurrentColumn = moveElementToNewIndex(cardsForCurrentColumn, draggedItem, itemAtPositionIndex);
+    cardsForCurrentColumn.forEach(item => {
+      item.invalidate();
     });
+
+    newColumnCardsMap.set(column.id, cardsForCurrentColumn);
 
     this.setState({
       boardState: {
@@ -472,7 +430,7 @@ class KanbanBoard extends React.Component<Props, State> {
         columnCardsMap: newColumnCardsMap
       }
     }, () => {
-      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState, toColumn);
+      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState, column);
     });
   }
 

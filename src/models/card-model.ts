@@ -83,20 +83,14 @@ export class CardModel {
       return;
     }
 
-    // todo console.log("measuring card: " + this.id);
     this._ref.measure((_x, _y, width, height, pageX, pageY) => {
       this._rect = { x: pageX, y: pageY, width, height };
-
-      // todo console.log("result card: " + this.id + ", " + JSON.stringify(this._rect));
 
       if (!this._isRenderedAndVisible && this._rect.x && this._rect.y && this._rect.width && this._rect.height) {
         this.setIsRenderedAndVisible(true);
       } else if (this._isRenderedAndVisible && !this._rect.x && !this._rect.y && !this._rect.width && !this._rect.height) {
         this.setIsRenderedAndVisible(false);
       }
-      // if (previousItem?.dimensions && previousItem.dimensions.y > this._rect.y) {
-      //   this.setIsRenderedAndVisible(false);
-      // }
 
       this._invalidated = false;
     });
