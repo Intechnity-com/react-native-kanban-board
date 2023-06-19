@@ -34,8 +34,8 @@ export class BoardManager {
       }
 
       cards.forEach((card, index) => {
-        const previousCard = index > 0 ? cards[index - 1] : undefined;
-        card.measure(previousCard);
+        //const previousCard = index > 0 ? cards[index - 1] : undefined;
+        card.validateAndMeasure();
       });
     });
   };
@@ -91,6 +91,9 @@ export class BoardManager {
       return undefined;
     }
 
+    // console.log("getCardAtPosition: " + JSON.stringify(items.map(x => x.id)));
+    // console.log("getCardAtPosition: " + JSON.stringify(items.map(x => x.dimensions)));
+
     let item = items.find(i => this.isItemWithinY(y, dimensions, i));
 
     //if Y higher than first item, then select 1 item
@@ -138,6 +141,8 @@ export class BoardManager {
     if (!cards) {
       return [];
     }
+
+    //console.log("getVisibleCards: " + JSON.stringify(cards.map(x => x.dimensions)));
 
     const visibleCards = cards.filter(x => x.isRenderedAndVisible);
     return visibleCards;

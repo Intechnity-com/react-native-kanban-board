@@ -150,7 +150,7 @@ export class Column extends React.Component<Props, State> {
           renderItem={item => (
             <View key={item.item.id}
               ref={ref => item.item.setRef(ref)}
-              onLayout={() => item.item.measure(undefined)}>
+              onLayout={() => item.item.validateAndMeasure()}>
               {renderCardItem(item.item)}
             </View>
           )}

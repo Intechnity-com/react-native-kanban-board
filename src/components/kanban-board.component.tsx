@@ -104,7 +104,7 @@ class KanbanBoard extends React.Component<Props, State> {
   }
 
   componentDidMount() {
-    this.loadBoard(this.props.columns, this.props.cards);
+    this.refreshBoard(this.props.columns, this.props.cards);
   }
 
   componentDidUpdate(prevProps: Props) {
@@ -126,41 +126,7 @@ class KanbanBoard extends React.Component<Props, State> {
     }
   }
 
-  loadBoard(columns: ColumnModel[], cards: CardModel[]) {
-    var columnsMap = new Map<string, ColumnModel>();
-    var columnCardsMap = new Map<string, CardModel[]>();
-
-    columns.forEach(value => {
-      columnsMap.set(value.id, value);
-    });
-
-    cards.forEach(value => {
-      if (!columnsMap.has(value.columnId)) {
-        return;
-      }
-
-      if (!columnCardsMap.get(value.columnId)) {
-        columnCardsMap.set(value.columnId, []);
-      }
-      columnCardsMap.get(value.columnId)!.push(value);
-    });
-
-    columns.forEach(column => {
-      if (!columnCardsMap.get(column.id)) {
-        columnCardsMap.set(column.id, []);
-      }
-    });
-
-    this.setState({
-      boardState: {
-        columnsMap: columnsMap,
-        columnCardsMap: columnCardsMap
-      }
-    });
-  };
-
   refreshBoard(columns?: ColumnModel[], cards?: CardModel[]) {
-    console.log("TODO: refreshBoard called");
     const { boardState } = this.state;
 
     var columnsMap = new Map<string, ColumnModel>(boardState.columnsMap);
@@ -201,126 +167,76 @@ class KanbanBoard extends React.Component<Props, State> {
     });
   };
 
-  moveCard(draggedItem: CardModel, _x: number, y: number, targetColumn: ColumnModel) {
-    try {
-      const columns = this.state.boardState.columnsMap;
-      const fromColumn = columns.get(draggedItem.columnId);
+  onHandlerStateChange = (event: HandlerStateChangeEvent<LongPressGestureHandlerEventPayload>) => {
+    const { state } = event.nativeEvent;
 
-      if (!targetColumn || !fromColumn) {
-        return;
-      }
-
-      if (targetColumn.id != fromColumn.id) {
-        this.moveToOtherColumn(fromColumn, targetColumn, draggedItem);
-      }
-
-      const items = BoardManager.getVisibleCards(targetColumn, this.state.boardState);
-      const itemAtPosition = BoardManager.getCardAtPosition(items, y, draggedItem.dimensions);
-      if (!itemAtPosition) {
-        return;
-      }
-
-      if (draggedItem.id == itemAtPosition.id) {
-        return;
-      }
-
-      this.switchItemsInColumn(draggedItem, itemAtPosition, targetColumn);
-    } catch (error) {
-      logError('board actions error:  ' + error)
+    if (state === rnState.ACTIVE) {
+      this.onDragStart(event);
+    } else if (state === rnState.END || state === rnState.CANCELLED) {
+      this.onDragEnd();
     }
-  };
-
-  moveToOtherColumn(fromColumn: ColumnModel, toColumn: ColumnModel, item: CardModel) {
-    var newColumnsMap = new Map<string, ColumnModel>(this.state.boardState.columnsMap);
-    var newColumnCardsMap = new Map<string, CardModel[]>(this.state.boardState.columnCardsMap);
-
-    var itemsFromColumn = newColumnCardsMap.get(fromColumn.id);
-    var itemsToColumn = newColumnCardsMap.get(toColumn.id);
-
-    itemsFromColumn = itemsFromColumn!.filter(x => x.id != item.id);
-    itemsToColumn = itemsToColumn!.filter(x => x.id != item.id);
-
-    if (itemsFromColumn.find(x => x.invalidatedDimensions) != undefined ||
-      itemsToColumn.find(x => x.invalidatedDimensions) != undefined) { // dont do anything if dimensions invalidated - means an move operation was just done
-      return;
-    }
-
-    itemsToColumn.push(item);
-    item.columnId = toColumn.id;
-
-    newColumnCardsMap.set(fromColumn.id, itemsFromColumn);
-    newColumnCardsMap.set(toColumn.id, itemsToColumn);
-
-    this.setState({
-      boardState: {
-        columnsMap: newColumnsMap,
-        columnCardsMap: newColumnCardsMap
-      }
-    });
-
-    item.setIsRenderedAndVisible(true);
-    item.invalidateDimensions();
-
-    BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
   }
 
-  switchItemsInColumn(draggedItem: CardModel, itemAtPosition: CardModel, toColumn: ColumnModel) {
-    var newColumnsMap = new Map<string, ColumnModel>(this.state.boardState.columnsMap);
-    var newColumnCardsMap = new Map<string, CardModel[]>(this.state.boardState.columnCardsMap);
-    var cardsForCurrentColumn = newColumnCardsMap.get(toColumn.id)!;
+  scrollTimeout: ReactTimeout.Timer | undefined = undefined;
+  scrollColumn(column: ColumnModel, anOffset: number) {
+    const { movingMode } = this.state;
 
-    if (!cardsForCurrentColumn || cardsForCurrentColumn.find(x => x.invalidatedDimensions)) {
+    if (this.scrollTimeout || !movingMode) {
       return;
     }
 
-    draggedItem.setIsRenderedAndVisible(true);
+    const scrollOffset = column.scrollOffset + 40 * anOffset;
+    column.setScrollOffset(scrollOffset);
+    const columnComponent = this.columnListViewsMap.get(column.id);
+    columnComponent?.scrollToOffset(scrollOffset);
 
-    let visibleItems = BoardManager.getVisibleCards(toColumn, this.state.boardState);
+    if (this.props.setTimeout) {
+      this.scrollTimeout = this.props.setTimeout(() => {
+        this.scrollTimeout = undefined;
+      }, 50);
+    }
+  }
 
-    const draggedItemIndex = (visibleItems).findIndex(item => item.id === draggedItem.id);
-    const itemAtPositionIndex = (visibleItems).findIndex(item => item.id === itemAtPosition.id);
-    let itemsRange: CardModel[];
-    if (draggedItemIndex < itemAtPositionIndex) {
-      itemsRange = visibleItems.filter((_, index) => draggedItemIndex <= index && index <= itemAtPositionIndex);
-    } else {
-      itemsRange = visibleItems.filter((_, index) => itemAtPositionIndex <= index && index <= draggedItemIndex);
+  onDragStart(event: HandlerStateChangeEvent<LongPressGestureHandlerEventPayload>) {
+    const {
+      boardState,
+      movingMode
+    } = this.state;
+
+    if (movingMode) {
+      return;
     }
 
-    itemsRange.forEach((_, index) => {
-      const firstItem = itemsRange[index];
-      const secondItem = itemsRange[index + 1];
-      if (!firstItem || !secondItem) {
-        return;
-      }
+    const column = BoardManager.findColumn(boardState, event.nativeEvent.absoluteX);
 
-      const firstIndex = cardsForCurrentColumn!.indexOf(firstItem);
-      const secondIndex = cardsForCurrentColumn!.indexOf(secondItem);
-      const firstY = firstItem.dimensions?.y ?? 0;
-      const secondY = secondItem.dimensions?.y ?? 0;
-      const firstRef = firstItem.ref;
-      const secondRef = secondItem.ref;
+    if (!column) {
+      return;
+    }
+    const item = BoardManager.findCardInColumn(column, this.state.boardState, event.nativeEvent.absoluteY);
 
-      cardsForCurrentColumn![firstIndex] = secondItem;
-      cardsForCurrentColumn![secondIndex] = firstItem;
+    if (!item || !item.dimensions) {
+      return;
+    }
 
-      firstItem.setDimensions({ ...firstItem.dimensions!, y: secondY });
-      secondItem.setDimensions({ ...secondItem.dimensions!, y: firstY });
+    const draggedItemWidth = item!.dimensions!.width;
+    const draggedItemHeight = item!.dimensions!.height;
 
-      firstItem.setRef(secondRef);
-      secondItem.setRef(firstRef);
-
-      firstItem.invalidateDimensions();
-      secondItem.invalidateDimensions();
+    this.state.pan.setValue({
+      x: this.state.startingX - draggedItemWidth / 2,
+      y: this.state.startingY - draggedItemHeight / 2
     });
 
+    item!.hide(); // hide this item so we can display the 'dragged' item
     this.setState({
-      boardState: {
-        columnsMap: newColumnsMap,
-        columnCardsMap: newColumnCardsMap
-      }
+      movingMode: true,
+      draggedItem: item,
+      srcColumnId: item!.columnId,
+      startingX: event.nativeEvent.absoluteX,
+      startingY: event.nativeEvent.absoluteY,
+      draggedItemWidth: draggedItemWidth,
+      draggedItemHeight: draggedItemHeight
     });
-
-    BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState, toColumn);
+    this.rotate(MAX_DEG);
   }
 
   snapTimeout: NodeJS.Timeout | undefined = undefined;
@@ -385,57 +301,12 @@ class KanbanBoard extends React.Component<Props, State> {
         this.moveCard(draggedItem!, this.dragX, this.dragY, targetColumn);
         const scrollResult = BoardManager.getScrollingDirection(targetColumn, this.dragY);
 
-        if (!scrollResult) {
-          return;
-        }
-
-        if (this.shouldScrollColumn(scrollResult.scrolling, scrollResult.offset, targetColumn)) {
+        if (scrollResult && scrollResult.scrolling) {
           this.scrollColumn(targetColumn, scrollResult.offset);
         }
       }
     } catch (error) {
       logError('onGestureEvent: ' + error);
-    }
-  }
-
-  onHandlerStateChange = (event: HandlerStateChangeEvent<LongPressGestureHandlerEventPayload>) => {
-    const { state } = event.nativeEvent;
-
-    if (state === rnState.ACTIVE) {
-      this.onDragStart(event);
-    } else if (state === rnState.END || state === rnState.CANCELLED) {
-      this.onDragEnd();
-    }
-  }
-
-  shouldScrollColumn(scrolling: boolean, offset: number, column: ColumnModel) {
-    const placeToScroll = ((offset < 0 && column.scrollOffset > 0) || (offset > 0 && column.scrollOffset < column.contentHeight))
-
-    return scrolling && offset !== 0 && placeToScroll;
-  }
-
-  scrollTimeout: ReactTimeout.Timer | undefined = undefined;
-  scrollColumn(column: ColumnModel, anOffset: number) {
-    const { movingMode } = this.state;
-
-    if (this.scrollTimeout || !movingMode) {
-      return;
-    }
-
-    const scrollOffset = column.scrollOffset + 40 * anOffset;
-    column.setScrollOffset(scrollOffset);
-    const columnComponent = this.columnListViewsMap.get(column.id);
-    columnComponent?.scrollToOffset(scrollOffset);
-
-    const scrollResult = BoardManager.getScrollingDirection(column, this.dragY);
-    if (!scrollResult) {
-      return;
-    }
-
-    if (this.props.setTimeout) {
-      this.scrollTimeout = this.props.setTimeout(() => {
-        this.scrollTimeout = undefined;
-      }, 50);
     }
   }
 
@@ -448,6 +319,8 @@ class KanbanBoard extends React.Component<Props, State> {
     if (!draggedItem) {
       return;
     }
+
+    // todo console.log("onDragEnd");
 
     try {
       draggedItem.show();
@@ -469,11 +342,138 @@ class KanbanBoard extends React.Component<Props, State> {
 
       this.setState({
         draggedItem: undefined
+      }, () => {
+        BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
       });
 
     } catch (error) {
       logError('onDragEnd: ' + error);
     }
+  }
+
+  moveCard(draggedItem: CardModel, _x: number, y: number, targetColumn: ColumnModel) {
+    try {
+      const columns = this.state.boardState.columnsMap;
+      const fromColumn = columns.get(draggedItem.columnId);
+
+      if (draggedItem.invalidatedDimensions || !targetColumn || !fromColumn) {
+        return;
+      }
+
+      if (targetColumn.id != fromColumn.id) {
+        this.moveToOtherColumn(draggedItem, fromColumn, targetColumn);
+        return;
+      }
+
+      const items = BoardManager.getVisibleCards(targetColumn, this.state.boardState);
+      const itemAtPosition = BoardManager.getCardAtPosition(items, y, draggedItem.dimensions);
+      if (!itemAtPosition) {
+        return;
+      }
+
+      if (draggedItem.id == itemAtPosition.id) {
+        return;
+      }
+
+      this.switchItemsInColumn(draggedItem, itemAtPosition, targetColumn);
+    } catch (error) {
+      logError('board actions error:  ' + error)
+    }
+  };
+
+  moveToOtherColumn(item: CardModel, fromColumn: ColumnModel, toColumn: ColumnModel) {
+    var newColumnsMap = new Map<string, ColumnModel>(this.state.boardState.columnsMap);
+    var newColumnCardsMap = new Map<string, CardModel[]>(this.state.boardState.columnCardsMap);
+
+    var itemsFromColumn = newColumnCardsMap.get(fromColumn.id);
+    var itemsToColumn = newColumnCardsMap.get(toColumn.id);
+
+    // todo console.log("moving to other node " + toColumn.id);
+
+    itemsFromColumn = itemsFromColumn!.filter(x => x.id != item.id);
+    itemsToColumn = itemsToColumn!.filter(x => x.id != item.id);
+
+    // todo if (itemsFromColumn.find(x => x.invalidatedDimensions) != undefined ||
+    //   itemsToColumn.find(x => x.invalidatedDimensions) != undefined) { // dont do anything if dimensions invalidated - means an move operation was just done
+    //   return;
+    // }
+
+    itemsToColumn.push(item);
+    item.columnId = toColumn.id;
+
+    newColumnCardsMap.set(fromColumn.id, itemsFromColumn);
+    newColumnCardsMap.set(toColumn.id, itemsToColumn);
+
+    item.invalidate();
+
+    this.setState({
+      boardState: {
+        columnsMap: newColumnsMap,
+        columnCardsMap: newColumnCardsMap
+      }
+    }, () => {
+      // todo item.setIsRenderedAndVisible(true);
+      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
+    });
+  }
+
+  switchItemsInColumn(draggedItem: CardModel, itemAtPosition: CardModel, toColumn: ColumnModel) {
+    var newColumnsMap = new Map<string, ColumnModel>(this.state.boardState.columnsMap);
+    var newColumnCardsMap = new Map<string, CardModel[]>(this.state.boardState.columnCardsMap);
+    var cardsForCurrentColumn = newColumnCardsMap.get(toColumn.id)!;
+
+    if (!cardsForCurrentColumn || cardsForCurrentColumn.find(x => x.invalidatedDimensions)) {
+      return;
+    }
+
+    draggedItem.setIsRenderedAndVisible(true);
+
+    let visibleItems = BoardManager.getVisibleCards(toColumn, this.state.boardState);
+
+    const draggedItemIndex = (visibleItems).findIndex(item => item.id === draggedItem.id);
+    const itemAtPositionIndex = (visibleItems).findIndex(item => item.id === itemAtPosition.id);
+    let itemsRange: CardModel[];
+    if (draggedItemIndex < itemAtPositionIndex) {
+      itemsRange = visibleItems.filter((_, index) => draggedItemIndex <= index && index <= itemAtPositionIndex);
+    } else {
+      itemsRange = visibleItems.filter((_, index) => itemAtPositionIndex <= index && index <= draggedItemIndex);
+    }
+
+    itemsRange.forEach((_, index) => {
+      const firstItem = itemsRange[index];
+      const secondItem = itemsRange[index + 1];
+      if (!firstItem || !secondItem) {
+        return;
+      }
+
+      const firstIndex = cardsForCurrentColumn!.indexOf(firstItem);
+      const secondIndex = cardsForCurrentColumn!.indexOf(secondItem);
+      // const firstY = firstItem.dimensions?.y ?? 0;
+      // const secondY = secondItem.dimensions?.y ?? 0;
+      // const firstRef = firstItem.ref;
+      // const secondRef = secondItem.ref;
+
+      cardsForCurrentColumn![firstIndex] = secondItem;
+      cardsForCurrentColumn![secondIndex] = firstItem;
+
+      // firstItem.setDimensions({ ...firstItem.dimensions!, y: secondY });
+      // secondItem.setDimensions({ ...secondItem.dimensions!, y: firstY });
+
+      // firstItem.setRef(secondRef);
+      // secondItem.setRef(firstRef);
+
+      firstItem.invalidate();
+      secondItem.invalidate();
+    });
+
+    this.setState({
+      boardState: {
+        columnsMap: newColumnsMap,
+        columnCardsMap: newColumnCardsMap
+      }
+    }, () => {
+      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState, toColumn);
+    });
   }
 
   rotate(toValue: number) {
@@ -487,48 +487,6 @@ class KanbanBoard extends React.Component<Props, State> {
         useNativeDriver: true
       }
     ).start();
-  }
-
-  onDragStart(event: HandlerStateChangeEvent<LongPressGestureHandlerEventPayload>) {
-    const {
-      boardState,
-      movingMode
-    } = this.state;
-
-    if (movingMode) {
-      return;
-    }
-
-    const column = BoardManager.findColumn(boardState, event.nativeEvent.absoluteX);
-
-    if (!column) {
-      return;
-    }
-    const item = BoardManager.findCardInColumn(column, this.state.boardState, event.nativeEvent.absoluteY);
-
-    if (!item || !item.dimensions) {
-      return;
-    }
-
-    const draggedItemWidth = item!.dimensions!.width;
-    const draggedItemHeight = item!.dimensions!.height;
-
-    this.state.pan.setValue({
-      x: this.state.startingX - draggedItemWidth / 2,
-      y: this.state.startingY - draggedItemHeight / 2
-    });
-
-    item!.hide(); // hide this item so we can display the 'dragged' item
-    this.setState({
-      movingMode: true,
-      draggedItem: item,
-      srcColumnId: item!.columnId,
-      startingX: event.nativeEvent.absoluteX,
-      startingY: event.nativeEvent.absoluteY,
-      draggedItemWidth: draggedItemWidth,
-      draggedItemHeight: draggedItemHeight
-    });
-    this.rotate(MAX_DEG);
   }
 
   cardPressed = (card: CardModel) => {

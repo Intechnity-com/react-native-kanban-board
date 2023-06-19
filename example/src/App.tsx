@@ -74,9 +74,9 @@ class App extends React.Component<{}, AppState> {
     const { cards } = this.state;
 
     const newCard = new CardModel(
-      "Generated card " + this.exampleCardNo++,
+      "Generated card",
       "new",
-      "New card",
+      "New card " + this.exampleCardNo++,
       "Example card",
       "Some description",
       [],

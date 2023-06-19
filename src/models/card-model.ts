@@ -8,7 +8,7 @@ export class CardModel {
   private _rect: Rect | undefined;
   private _isLocked: boolean = false;
   private _isRenderedAndVisible: boolean = false;
-  private _invalidatedDimensions: boolean = false;
+  private _invalidated: boolean = false;
 
   id: string | undefined;
   columnId: string;
@@ -40,7 +40,7 @@ export class CardModel {
   }
 
   get invalidatedDimensions(): boolean {
-    return this._invalidatedDimensions;
+    return this._invalidated;
   }
 
   /**
@@ -77,24 +77,28 @@ export class CardModel {
     this._ref = ref;
   }
 
-  measure(previousItem: CardModel | undefined) {
+  validateAndMeasure() {
     if (!this._ref) {
       this._rect = undefined;
       return;
     }
 
+    // todo console.log("measuring card: " + this.id);
     this._ref.measure((_x, _y, width, height, pageX, pageY) => {
       this._rect = { x: pageX, y: pageY, width, height };
+
+      // todo console.log("result card: " + this.id + ", " + JSON.stringify(this._rect));
+
       if (!this._isRenderedAndVisible && this._rect.x && this._rect.y && this._rect.width && this._rect.height) {
         this.setIsRenderedAndVisible(true);
       } else if (this._isRenderedAndVisible && !this._rect.x && !this._rect.y && !this._rect.width && !this._rect.height) {
         this.setIsRenderedAndVisible(false);
       }
-      if (previousItem?.dimensions && previousItem.dimensions.y > this._rect.y) {
-        this.setIsRenderedAndVisible(false);
-      }
+      // if (previousItem?.dimensions && previousItem.dimensions.y > this._rect.y) {
+      //   this.setIsRenderedAndVisible(false);
+      // }
 
-      this._invalidatedDimensions = false;
+      this._invalidated = false;
     });
   }
 
@@ -114,7 +118,7 @@ export class CardModel {
     this._hidden = false;
   }
 
-  invalidateDimensions() {
-    this._invalidatedDimensions = true;
+  invalidate() {
+    this._invalidated = true;
   }
 }
