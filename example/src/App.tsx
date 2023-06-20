@@ -135,12 +135,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: "red"
   },
   actionsContainer: {
     marginTop: 20
   },
   kanbanStyle: {
-    marginTop: 20
+    marginTop: 20,
+    flex: 1
   }
 });

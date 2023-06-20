@@ -26,7 +26,7 @@ import { logError } from '../utils/logger';
 import { MAX_DEG, MAX_RANGE } from '../board-consts';
 import Card, { CardExternalProps } from './cards/card.component';
 import WrappedColumn, { Column, ColumnExternalProps } from './columns/column.component';
-import { KanbanContextProvider, KanbanContext, withKanbanContext } from './kanban-context.provider';
+import { KanbanContext, withKanbanContext } from './kanban-context.provider';
 import { moveElementToNewIndex } from '../utils/array-tools';
 
 export type KanbanBoardProps =
@@ -585,35 +585,33 @@ class KanbanBoard extends React.Component<Props, State> {
 
     return (
       <GestureHandlerRootView style={[styles.boardContainer, style]}>
-        <KanbanContextProvider>
-          <LongPressGestureHandler
-            maxDist={Number.MAX_SAFE_INTEGER}
-            onGestureEvent={this.onGestureEvent}
-            onHandlerStateChange={this.onHandlerStateChange}>
-            <View
-              style={styles.boardContainer}
-              onLayout={this.setBoardPositionY}>
+        <LongPressGestureHandler
+          maxDist={Number.MAX_SAFE_INTEGER}
+          onGestureEvent={this.onGestureEvent}
+          onHandlerStateChange={this.onHandlerStateChange}>
+          <View
+            style={styles.boardContainer}
+            onLayout={this.setBoardPositionY}>
 
-              <WrappedColumnsSnapContainer
-                ref={this.carouselRef}
-                data={columns}
-                onScrollEndDrag={this.onScrollEnd}
-                scrollEnabled={!movingMode}
-                renderItem={this.renderColumn}
-                sliderWidth={deviceWidth}
-                itemWidth={cardWidth}
-                deviceWidth={this.props.deviceWidth}
-                isLandscape={this.props.isLandscape}
-                columnWidth={this.props.columnWidth}
-                oneColumnWidth={this.props.oneColumnWidth}
-                cardWidth={this.props.cardWidth}
-                displayedColumns={this.props.displayedColumns}
-              />
+            <WrappedColumnsSnapContainer
+              ref={this.carouselRef}
+              data={columns}
+              onScrollEndDrag={this.onScrollEnd}
+              scrollEnabled={!movingMode}
+              renderItem={this.renderColumn}
+              sliderWidth={deviceWidth}
+              itemWidth={cardWidth}
+              deviceWidth={this.props.deviceWidth}
+              isLandscape={this.props.isLandscape}
+              columnWidth={this.props.columnWidth}
+              oneColumnWidth={this.props.oneColumnWidth}
+              cardWidth={this.props.cardWidth}
+              displayedColumns={this.props.displayedColumns}
+            />
 
-              {this.renderDragCard()}
-            </View >
-          </LongPressGestureHandler>
-        </KanbanContextProvider>
+            {this.renderDragCard()}
+          </View >
+        </LongPressGestureHandler>
       </GestureHandlerRootView>
     )
   }
@@ -621,7 +619,8 @@ class KanbanBoard extends React.Component<Props, State> {
 
 const styles = StyleSheet.create({
   boardContainer: {
-    flex: 1
+    flex: 1,
+    backgroundColor: "red"
   }
 });
 
