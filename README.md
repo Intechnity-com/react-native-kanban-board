@@ -4,6 +4,8 @@ A kanban board for React Native.
 
 ![Demo](./demo.gif)
 
+<img src="./demo.gif" height="400">
+
 ## Installation
 
 ```sh
