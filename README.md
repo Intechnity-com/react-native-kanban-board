@@ -10,6 +10,8 @@ A kanban board for React Native.
 npm install @intechnity/react-native-kanban-board
 ```
 
+react-native-gesture-handler must be also installed: https://www.npmjs.com/package/react-native-gesture-handler
+
 ## Usage
 
 Import the necessary components and types:
