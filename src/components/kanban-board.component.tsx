@@ -619,8 +619,7 @@ class KanbanBoard extends React.Component<Props, State> {
 
 const styles = StyleSheet.create({
   boardContainer: {
-    flex: 1,
-    backgroundColor: "red"
+    flex: 1
   }
 });
 
