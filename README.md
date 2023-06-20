@@ -135,3 +135,7 @@ MIT
 ## TODO
 - Render custom column
 - Input margin/paddings
+- Overhaul of KanbanContext Provider
+- Style cards count indicator
+- Tests
+- CI linting

@@ -16,7 +16,7 @@ import EmptyColumn from './empty-column.component';
 import { ColumnModel } from '../../models/column-model';
 import { CardModel } from '../../models/card-model';
 import { Badge } from './badge.component';
-import { BoardManager } from '../../utils/board-manager';
+import { BoardTools } from '../../utils/board-tools';
 import { BoardState } from '../../models/board-state';
 import { COLUMN_MARGIN } from '../../board-consts';
 import { KanbanContext, withKanbanContext } from '../kanban-context.provider';
@@ -93,7 +93,7 @@ export class Column extends React.Component<Props, State> {
 
     if (scrollingDownEnded || scrollingUpEnded) {
       column.setScrollOffset(currentOffset);
-      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.props.boardState);
+      BoardTools.validateAndMeasureBoard(this.props.boardState);
     }
   }
 
@@ -110,10 +110,9 @@ export class Column extends React.Component<Props, State> {
     column.setContentHeight(contentHeight);
   }
 
-  handleChangeVisibleItems = (info: { viewableItems: Array<ViewToken>; changed: Array<ViewToken> }) => {
+  handleChangeVisibleItems = () => {
     const { column } = this.props;
-    let visibleItems = info.viewableItems.map(x => x.item);
-    BoardManager.updateItemsVisibility(this.props.boardState, column, visibleItems);
+    BoardTools.validateAndMeasureBoard(this.props.boardState, column);
   }
 
   render = () => {

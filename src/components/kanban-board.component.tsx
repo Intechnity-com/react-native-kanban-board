@@ -21,7 +21,7 @@ import { CardModel } from '../models/card-model';
 import { ColumnModel } from '../models/column-model';
 import WrappedColumnsSnapContainer, { ColumnSnapContainer } from './columns/columns-carousel-container.component';
 import { BoardState } from '../models/board-state';
-import { BoardManager } from '../utils/board-manager';
+import { BoardTools } from '../utils/board-tools';
 import { logError } from '../utils/logger';
 import { MAX_DEG, MAX_RANGE } from '../board-consts';
 import Card, { CardExternalProps } from './cards/card.component';
@@ -208,13 +208,12 @@ class KanbanBoard extends React.Component<Props, State> {
       return;
     }
 
-    const column = BoardManager.findColumn(boardState, event.nativeEvent.absoluteX);
-
+    const column = BoardTools.findColumn(boardState, event.nativeEvent.absoluteX);
     if (!column) {
       return;
     }
-    const item = BoardManager.findCardInColumn(column, this.state.boardState, event.nativeEvent.absoluteY);
 
+    const item = BoardTools.findCardInColumn(column, this.state.boardState, event.nativeEvent.absoluteY);
     if (!item || !item.dimensions) {
       return;
     }
@@ -227,7 +226,7 @@ class KanbanBoard extends React.Component<Props, State> {
       y: this.state.startingY - draggedItemHeight / 2
     });
 
-    item!.hide(); // hide this item so we can display the 'dragged' item
+    item!.hide(); // hide this item so we can display the 'dragged' item over it
     this.setState({
       movingMode: true,
       draggedItem: item,
@@ -297,10 +296,10 @@ class KanbanBoard extends React.Component<Props, State> {
         }, snapAfterTimeout);
       }
 
-      const targetColumn = BoardManager.findColumn(boardState, event.nativeEvent.absoluteX);
+      const targetColumn = BoardTools.findColumn(boardState, event.nativeEvent.absoluteX);
       if (targetColumn) {
         this.moveCard(draggedItem!, this.dragX, this.dragY, targetColumn);
-        const scrollResult = BoardManager.getScrollingDirection(targetColumn, this.dragY);
+        const scrollResult = BoardTools.getScrollingDirection(targetColumn, this.dragY);
 
         if (scrollResult && scrollResult.scrolling) {
           this.scrollColumn(targetColumn, scrollResult.offset);
@@ -323,7 +322,6 @@ class KanbanBoard extends React.Component<Props, State> {
 
     try {
       draggedItem.show();
-      this.refreshBoard(); // todo is this needed
 
       const destColumnId = draggedItem.columnId;
       pan.setValue({ x: 0, y: 0 });
@@ -341,8 +339,10 @@ class KanbanBoard extends React.Component<Props, State> {
 
       this.setState({
         draggedItem: undefined
-      }, () => {
-        BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
+      });
+
+      requestAnimationFrame(() => {
+        BoardTools.validateAndMeasureBoard(this.state.boardState);
       });
 
     } catch (error) {
@@ -369,7 +369,7 @@ class KanbanBoard extends React.Component<Props, State> {
         return;
       }
 
-      const itemAtPosition = BoardManager.getCardAtPosition(targetItems, y, draggedItem.dimensions);
+      const itemAtPosition = BoardTools.getCardAtPosition(targetItems, y, draggedItem.dimensions);
       if (!itemAtPosition) {
         return;
       }
@@ -378,7 +378,7 @@ class KanbanBoard extends React.Component<Props, State> {
         return;
       }
 
-      this.switchItemsInColumn(draggedItem, itemAtPosition, targetColumn);
+      this.moveCardToPosition(draggedItem, itemAtPosition, targetColumn);
     } catch (error) {
       logError('board actions error:  ' + error)
     }
@@ -410,11 +410,11 @@ class KanbanBoard extends React.Component<Props, State> {
     });
 
     requestAnimationFrame(() => {
-      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
+      BoardTools.validateAndMeasureBoard(this.state.boardState);
     });
   }
 
-  switchItemsInColumn(draggedItem: CardModel, itemAtPosition: CardModel, column: ColumnModel) {
+  moveCardToPosition(draggedItem: CardModel, itemAtPosition: CardModel, column: ColumnModel) {
     var newColumnsMap = new Map<string, ColumnModel>(this.state.boardState.columnsMap);
     var newColumnCardsMap = new Map<string, CardModel[]>(this.state.boardState.columnCardsMap);
     var cardsForCurrentColumn = newColumnCardsMap.get(column.id)!;
@@ -435,7 +435,7 @@ class KanbanBoard extends React.Component<Props, State> {
     });
 
     requestAnimationFrame(() => {
-      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
+      BoardTools.validateAndMeasureBoard(this.state.boardState);
     });
   }
 
@@ -464,7 +464,7 @@ class KanbanBoard extends React.Component<Props, State> {
   }
 
   onScrollEnd = () => {
-    BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
+    BoardTools.validateAndMeasureBoard(this.state.boardState);
   }
 
   setBoardPositionY = (e: LayoutChangeEvent) => {

@@ -3,26 +3,10 @@ import { BoardState } from '../models/board-state';
 import { CardModel } from '../models/card-model';
 import { Rect } from '../models/rect';
 
-export class BoardManager {
+export class BoardTools {
   static SCROLL_TRESHOLD = 100;
 
-  static updateItemsVisibility(boardState: BoardState, column: ColumnModel, visibleItems: CardModel[]) {
-    const allItemsForCard = boardState.columnCardsMap.get(column.id);
-    if (!allItemsForCard) {
-      return;
-    }
-
-    this.updateColumnsLayoutAfterVisibilityChanged(boardState, column);
-
-    // todo is this needed?
-    allItemsForCard.forEach(item => {
-      const isVisible = visibleItems?.some(x => x.id === item.id) ?? false;
-      item.setIsRenderedAndVisible(isVisible);
-    });
-  }
-
-  // Function to update column layout after visibility change
-  static updateColumnsLayoutAfterVisibilityChanged(boardState: BoardState, column: ColumnModel | undefined = undefined) {
+  static validateAndMeasureBoard(boardState: BoardState, column: ColumnModel | undefined = undefined) {
     let columns = column ? [column] : Array.from(boardState.columnsMap.values());
 
     columns.forEach(column => {
