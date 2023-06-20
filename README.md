@@ -2,7 +2,7 @@
 
 A kanban board for React Native.
 
-TODO gif how it works
+![Demo](./demo.gif)
 
 ## Installation
 

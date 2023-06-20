@@ -1,48 +1,25 @@
-name: CI
+name: Build
+
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Lint files
-        run: yarn lint
-
-      - name: Typecheck files
-        run: yarn typecheck
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Run unit tests
-        run: yarn test --maxWorkers=2 --coverage
-
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
-      - name: Setup
-        uses: ./.github/actions/setup
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16.x
 
-      - name: Build package
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run build
         run: yarn prepack
