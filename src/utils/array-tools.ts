@@ -1,4 +1,4 @@
-function moveElementToNewIndex<T>(array: T[], element: T, newIndex: number): T[] {
+export function moveElementToNewIndex<T>(array: T[], element: T, newIndex: number): T[] {
   const oldIndex = array.indexOf(element);
   if (oldIndex === -1) {
       return array;

@@ -27,6 +27,7 @@ import { MAX_DEG, MAX_RANGE } from '../board-consts';
 import Card, { CardExternalProps } from './cards/card.component';
 import WrappedColumn, { Column, ColumnExternalProps } from './columns/column.component';
 import { KanbanContextProvider, KanbanContext, withKanbanContext } from './kanban-context.provider';
+import { moveElementToNewIndex } from '../utils/array-tools';
 
 export type KanbanBoardProps =
   CardExternalProps &
@@ -80,6 +81,7 @@ class KanbanBoard extends React.Component<Props, State> {
   dragX: number = 0;
   dragY: number = 0;
   carouselRef: RefObject<ColumnSnapContainer> = React.createRef<ColumnSnapContainer>();
+  validateBoardAfterRender: boolean = false;
   columnListViewsMap: Map<string, Column | null> = new Map<string, Column | null>();
 
   constructor(props: Props) {
@@ -107,7 +109,7 @@ class KanbanBoard extends React.Component<Props, State> {
     this.refreshBoard(this.props.columns, this.props.cards);
   }
 
-  componentDidUpdate(prevProps: Props) {
+  componentDidUpdate(prevProps: Props, _: State) {
     const { columns, cards } = this.props;
 
     let changedColumns: ColumnModel[] | undefined = undefined;
@@ -123,6 +125,12 @@ class KanbanBoard extends React.Component<Props, State> {
 
     if (changedColumns || changedCards) {
       this.refreshBoard(changedColumns, changedCards);
+    }
+
+    if (this.validateBoardAfterRender) {
+      console.log("validating board after render....");
+      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
+      this.validateBoardAfterRender = false;
     }
   }
 
@@ -354,22 +362,26 @@ class KanbanBoard extends React.Component<Props, State> {
       const columns = this.state.boardState.columnsMap;
       const fromColumn = columns.get(draggedItem.columnId);
 
-      if (draggedItem.invalidatedDimensions || !targetColumn || !fromColumn) {
+      if (!targetColumn || !fromColumn) {
         return;
       }
 
-      if (targetColumn.id != fromColumn.id) {
+      const targetItems = this.state.boardState.columnCardsMap.get(targetColumn.id) ?? [];
+      if (targetItems.find(x => x.isInvalidated)) {
+        return;
+      }
+
+      if (targetColumn.id !== fromColumn.id) {
         this.moveToOtherColumn(draggedItem, fromColumn, targetColumn);
         return;
       }
 
-      const items = this.state.boardState.columnCardsMap.get(targetColumn.id) ?? [];
-      const itemAtPosition = BoardManager.getCardAtPosition(items, y, draggedItem.dimensions);
+      const itemAtPosition = BoardManager.getCardAtPosition(targetItems, y, draggedItem.dimensions);
       if (!itemAtPosition) {
         return;
       }
 
-      if (draggedItem.id == itemAtPosition.id) {
+      if (draggedItem.id === itemAtPosition.id) {
         return;
       }
 
@@ -397,13 +409,12 @@ class KanbanBoard extends React.Component<Props, State> {
 
     item.invalidate();
 
+    this.validateBoardAfterRender = true;
     this.setState({
       boardState: {
         columnsMap: newColumnsMap,
         columnCardsMap: newColumnCardsMap
       }
-    }, () => {
-      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
     });
   }
 
@@ -412,25 +423,30 @@ class KanbanBoard extends React.Component<Props, State> {
     var newColumnCardsMap = new Map<string, CardModel[]>(this.state.boardState.columnCardsMap);
     var cardsForCurrentColumn = newColumnCardsMap.get(column.id)!;
 
-    if (!cardsForCurrentColumn || cardsForCurrentColumn.find(x => x.invalidatedDimensions)) {
-      return;
-    }
+    console.log("switching items, draggedItem: " + draggedItem.id + ", itemAtPosition: " + itemAtPosition.id);
+    console.log("switching items, draggedItem: " + JSON.stringify(draggedItem.dimensions) + ", itemAtPosition: " + JSON.stringify(itemAtPosition.dimensions));
 
     const itemAtPositionIndex = cardsForCurrentColumn.findIndex(item => item.id === itemAtPosition.id);
     cardsForCurrentColumn = moveElementToNewIndex(cardsForCurrentColumn, draggedItem, itemAtPositionIndex);
     cardsForCurrentColumn.forEach(item => {
       item.invalidate();
+      console.log("invalidated item " + item.id);
     });
 
     newColumnCardsMap.set(column.id, cardsForCurrentColumn);
 
+
+    // todo this.validateBoardAfterRender = true;
     this.setState({
       boardState: {
         columnsMap: newColumnsMap,
         columnCardsMap: newColumnCardsMap
       }
-    }, () => {
-      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState, column);
+    });
+
+    requestAnimationFrame(() => {
+      console.log("requestAnimationFrame");
+      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
     });
   }
 

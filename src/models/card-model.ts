@@ -39,7 +39,7 @@ export class CardModel {
     return this._isRenderedAndVisible;
   }
 
-  get invalidatedDimensions(): boolean {
+  get isInvalidated(): boolean {
     return this._invalidated;
   }
 
@@ -91,6 +91,8 @@ export class CardModel {
       } else if (this._isRenderedAndVisible && !this._rect.x && !this._rect.y && !this._rect.width && !this._rect.height) {
         this.setIsRenderedAndVisible(false);
       }
+
+      console.log("Validated card: " + this.id + ", dimensions: " + JSON.stringify(this._rect));
 
       this._invalidated = false;
     });
