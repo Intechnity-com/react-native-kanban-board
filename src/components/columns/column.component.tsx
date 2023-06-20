@@ -8,8 +8,7 @@ import {
   Text,
   View,
   TextStyle,
-  ViewStyle,
-  ViewToken
+  ViewStyle
 } from 'react-native';
 
 import EmptyColumn from './empty-column.component';
@@ -19,7 +18,7 @@ import { Badge } from './badge.component';
 import { BoardTools } from '../../utils/board-tools';
 import { BoardState } from '../../models/board-state';
 import { COLUMN_MARGIN } from '../../board-consts';
-import { KanbanContext, withKanbanContext } from '../kanban-context.provider';
+import { KanbanContext } from '../kanban-context.provider';
 
 export type ColumnExternalProps = {
   /**
