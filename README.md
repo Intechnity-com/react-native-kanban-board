@@ -29,7 +29,7 @@ const columns = [
 
 const cards = [
   new CardModel(
-    "card1",m
+    "card1",
     "new",
     "1st Card",
     "Example card",

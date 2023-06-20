@@ -1,11 +1,17 @@
 import React, { Component, RefObject } from 'react';
-import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native';
 
 import { COLUMN_MARGIN } from '../../board-consts';
 import { Dot } from './dot.component';
 import { KanbanContext } from '../kanban-context.provider';
 import { ColumnModel } from '../../models/column-model';
-import { Platform } from 'react-native';
 
 const INITIAL_ACTIVE_ITEM = 0;
 

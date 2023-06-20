@@ -66,7 +66,7 @@ type Props =
 type State = {
   boardState: BoardState,
   boardPositionY: number;
-  rotate: Animated.Value;
+  dragRotate: Animated.Value;
   pan: Animated.ValueXY;
   startingX: number;
   startingY: number;
@@ -81,7 +81,6 @@ class KanbanBoard extends React.Component<Props, State> {
   dragX: number = 0;
   dragY: number = 0;
   carouselRef: RefObject<ColumnSnapContainer> = React.createRef<ColumnSnapContainer>();
-  validateBoardAfterRender: boolean = false;
   columnListViewsMap: Map<string, Column | null> = new Map<string, Column | null>();
 
   constructor(props: Props) {
@@ -93,7 +92,7 @@ class KanbanBoard extends React.Component<Props, State> {
         columnsMap: new Map()
       },
       boardPositionY: 0,
-      rotate: new Animated.Value(0),
+      dragRotate: new Animated.Value(0),
       pan: new Animated.ValueXY(),
       startingX: 0,
       startingY: 0,
@@ -109,7 +108,7 @@ class KanbanBoard extends React.Component<Props, State> {
     this.refreshBoard(this.props.columns, this.props.cards);
   }
 
-  componentDidUpdate(prevProps: Props, _: State) {
+  componentDidUpdate(prevProps: Props) {
     const { columns, cards } = this.props;
 
     let changedColumns: ColumnModel[] | undefined = undefined;
@@ -125,12 +124,6 @@ class KanbanBoard extends React.Component<Props, State> {
 
     if (changedColumns || changedCards) {
       this.refreshBoard(changedColumns, changedCards);
-    }
-
-    if (this.validateBoardAfterRender) {
-      console.log("validating board after render....");
-      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
-      this.validateBoardAfterRender = false;
     }
   }
 
@@ -244,7 +237,7 @@ class KanbanBoard extends React.Component<Props, State> {
       draggedItemWidth: draggedItemWidth,
       draggedItemHeight: draggedItemHeight
     });
-    this.rotate(MAX_DEG);
+    this.rotateDragItem(MAX_DEG);
   }
 
   snapTimeout: NodeJS.Timeout | undefined = undefined;
@@ -409,34 +402,6 @@ class KanbanBoard extends React.Component<Props, State> {
 
     item.invalidate();
 
-    this.validateBoardAfterRender = true;
-    this.setState({
-      boardState: {
-        columnsMap: newColumnsMap,
-        columnCardsMap: newColumnCardsMap
-      }
-    });
-  }
-
-  switchItemsInColumn(draggedItem: CardModel, itemAtPosition: CardModel, column: ColumnModel) {
-    var newColumnsMap = new Map<string, ColumnModel>(this.state.boardState.columnsMap);
-    var newColumnCardsMap = new Map<string, CardModel[]>(this.state.boardState.columnCardsMap);
-    var cardsForCurrentColumn = newColumnCardsMap.get(column.id)!;
-
-    console.log("switching items, draggedItem: " + draggedItem.id + ", itemAtPosition: " + itemAtPosition.id);
-    console.log("switching items, draggedItem: " + JSON.stringify(draggedItem.dimensions) + ", itemAtPosition: " + JSON.stringify(itemAtPosition.dimensions));
-
-    const itemAtPositionIndex = cardsForCurrentColumn.findIndex(item => item.id === itemAtPosition.id);
-    cardsForCurrentColumn = moveElementToNewIndex(cardsForCurrentColumn, draggedItem, itemAtPositionIndex);
-    cardsForCurrentColumn.forEach(item => {
-      item.invalidate();
-      console.log("invalidated item " + item.id);
-    });
-
-    newColumnCardsMap.set(column.id, cardsForCurrentColumn);
-
-
-    // todo this.validateBoardAfterRender = true;
     this.setState({
       boardState: {
         columnsMap: newColumnsMap,
@@ -445,13 +410,37 @@ class KanbanBoard extends React.Component<Props, State> {
     });
 
     requestAnimationFrame(() => {
-      console.log("requestAnimationFrame");
       BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
     });
   }
 
-  rotate(toValue: number) {
-    const { rotate } = this.state;
+  switchItemsInColumn(draggedItem: CardModel, itemAtPosition: CardModel, column: ColumnModel) {
+    var newColumnsMap = new Map<string, ColumnModel>(this.state.boardState.columnsMap);
+    var newColumnCardsMap = new Map<string, CardModel[]>(this.state.boardState.columnCardsMap);
+    var cardsForCurrentColumn = newColumnCardsMap.get(column.id)!;
+
+    const itemAtPositionIndex = cardsForCurrentColumn.findIndex(item => item.id === itemAtPosition.id);
+    cardsForCurrentColumn = moveElementToNewIndex(cardsForCurrentColumn, draggedItem, itemAtPositionIndex);
+    cardsForCurrentColumn.forEach(item => {
+      item.invalidate();
+    });
+
+    newColumnCardsMap.set(column.id, cardsForCurrentColumn);
+
+    this.setState({
+      boardState: {
+        columnsMap: newColumnsMap,
+        columnCardsMap: newColumnCardsMap
+      }
+    });
+
+    requestAnimationFrame(() => {
+      BoardManager.updateColumnsLayoutAfterVisibilityChanged(this.state.boardState);
+    });
+  }
+
+  rotateDragItem(toValue: number) {
+    const { dragRotate: rotate } = this.state;
 
     Animated.spring(
       rotate,
@@ -488,7 +477,7 @@ class KanbanBoard extends React.Component<Props, State> {
       draggedItem,
       movingMode,
       pan,
-      rotate,
+      dragRotate: rotate,
       startingX,
       startingY } = this.state;
     const { renderCardContent } = this.props;

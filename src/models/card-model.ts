@@ -92,8 +92,6 @@ export class CardModel {
         this.setIsRenderedAndVisible(false);
       }
 
-      console.log("Validated card: " + this.id + ", dimensions: " + JSON.stringify(this._rect));
-
       this._invalidated = false;
     });
   }
